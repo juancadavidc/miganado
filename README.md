@@ -75,7 +75,21 @@ Endpoints REST:
 
 Las fotos se sirven en `/uploads/<filename>`.
 
-### 3. Frontend
+### 3. (Opcional) Cargar datos de prueba
+
+```bash
+cd backend
+npm run seed
+```
+
+Crea (o resetea) un usuario demo y 5 lotes de muestra basados en la planilla real.
+
+- **Documento:** `1234`
+- **Contraseña:** `miganado`
+
+El script borra los lotes previos del usuario demo antes de recrearlos, así que se puede ejecutar tantas veces como quieras — los datos quedan en un estado conocido.
+
+### 4. Frontend
 
 ```bash
 cd frontend
@@ -85,7 +99,7 @@ npm run dev                # http://localhost:5173
 
 El dev server tiene proxy a `/api` y `/uploads` hacia `localhost:4000`.
 
-### 4. Build de producción
+### 5. Build de producción
 
 ```bash
 cd frontend && npm run build   # dist/
