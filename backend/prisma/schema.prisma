@@ -13,6 +13,12 @@ enum Sexo {
   HL // Hembra de levante / ternera
   ML // Macho de levante / ternero
   MC // Macho de ceba
+  TO // Toro
+}
+
+enum CriaSexo {
+  M
+  H
 }
 
 model User {
@@ -42,6 +48,8 @@ model Lote {
   deduccion    Decimal  @db.Decimal(14, 2) @default(0)
   referencia   String?
   valorAPagar  Decimal  @db.Decimal(14, 2) @default(0)
+  criasMacho   Int      @default(0)
+  criasHembra  Int      @default(0)
   notas        String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -60,6 +68,7 @@ model Animal {
   identificador String?
   sexo       Sexo
   peso       Decimal? @db.Decimal(12, 2)
+  criaSexo   CriaSexo?
   notas      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

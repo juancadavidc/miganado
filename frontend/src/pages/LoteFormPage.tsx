@@ -4,7 +4,7 @@ import { api, ApiError } from '../api/client';
 import type { Sexo, Lote } from '../types';
 import { SEXO_LABELS } from '../types';
 
-const SEXOS: Sexo[] = ['VP', 'HV', 'HL', 'ML', 'MC'];
+const SEXOS: Sexo[] = ['VP', 'HV', 'HL', 'ML', 'MC', 'TO'];
 
 export function LoteFormPage() {
   const navigate = useNavigate();
@@ -23,6 +23,8 @@ export function LoteFormPage() {
     deduccion: 0,
     referencia: '',
     valorAPagar: 0,
+    criasMacho: 0,
+    criasHembra: 0,
     notas: '',
   });
   const [error, setError] = useState<string | null>(null);
@@ -141,6 +143,29 @@ export function LoteFormPage() {
             <input type="number" step="0.01" min={0} value={form.valorAPagar} onChange={(e) => update('valorAPagar', Number(e.target.value))} />
           </div>
         </div>
+
+        {form.sexo === 'VP' && (
+          <div className="grid-2" style={{ background: '#fafbf7', padding: '0.75rem', borderRadius: 8, marginBottom: '0.5rem' }}>
+            <div className="field">
+              <label>Crías macho 🐂</label>
+              <input
+                type="number"
+                min={0}
+                value={form.criasMacho}
+                onChange={(e) => update('criasMacho', Number(e.target.value))}
+              />
+            </div>
+            <div className="field">
+              <label>Crías hembra 🐄</label>
+              <input
+                type="number"
+                min={0}
+                value={form.criasHembra}
+                onChange={(e) => update('criasHembra', Number(e.target.value))}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="field">
           <label>Notas</label>

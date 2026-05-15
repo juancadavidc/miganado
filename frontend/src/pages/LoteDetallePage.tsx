@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
-import type { Animal, Foto, Gasto, LoteDetalle, Sexo } from '../types';
-import { SEXO_LABELS, SEXO_SHORT } from '../types';
+import type { Animal, CriaSexo, Foto, Gasto, LoteDetalle, Sexo } from '../types';
+import { CRIA_SEXO_LABELS, SEXO_LABELS, SEXO_SHORT } from '../types';
 import { fmtDate, fmtMoney, fmtNum } from '../lib/format';
 
-const SEXOS: Sexo[] = ['VP', 'HV', 'HL', 'ML', 'MC'];
+const SEXOS: Sexo[] = ['VP', 'HV', 'HL', 'ML', 'MC', 'TO'];
 
 export function LoteDetallePage() {
   const { id } = useParams<{ id: string }>();
@@ -54,6 +54,9 @@ export function LoteDetallePage() {
           <h1>Lote {lote.loteNumero ?? '—'} · {fmtDate(lote.fecha)}</h1>
           <p className="muted">
             Feria {lote.numeroFeria ?? '—'} · <span className="badge">{SEXO_SHORT[lote.sexo]}</span> · {lote.cantidad} cabezas · Ref. {lote.referencia ?? '—'}
+            {lote.sexo === 'VP' && (lote.criasMacho > 0 || lote.criasHembra > 0) && (
+              <> · Crías: <strong>{lote.criasMacho}</strong>🐂 / <strong>{lote.criasHembra}</strong>🐄</>
+            )}
           </p>
         </div>
         <button className="btn-danger" onClick={onDelete}>Eliminar lote</button>
@@ -206,6 +209,7 @@ function AnimalForm({ loteId, defaultSexo, onDone }: { loteId: string; defaultSe
   const [identificador, setIdentificador] = useState('');
   const [sexo, setSexo] = useState<Sexo>(defaultSexo);
   const [peso, setPeso] = useState('');
+  const [criaSexo, setCriaSexo] = useState<CriaSexo | ''>('');
   const [notas, setNotas] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -222,6 +226,7 @@ function AnimalForm({ loteId, defaultSexo, onDone }: { loteId: string; defaultSe
           identificador: identificador || null,
           sexo,
           peso: peso === '' ? null : Number(peso),
+          criaSexo: sexo === 'VP' && criaSexo ? criaSexo : null,
           notas: notas || null,
         },
       });
@@ -251,6 +256,16 @@ function AnimalForm({ loteId, defaultSexo, onDone }: { loteId: string; defaultSe
           <input type="number" step="0.01" min={0} value={peso} onChange={(e) => setPeso(e.target.value)} />
         </div>
       </div>
+      {sexo === 'VP' && (
+        <div className="field">
+          <label>Sexo de la cría</label>
+          <select value={criaSexo} onChange={(e) => setCriaSexo(e.target.value as CriaSexo | '')}>
+            <option value="">— sin especificar —</option>
+            <option value="M">Macho</option>
+            <option value="H">Hembra</option>
+          </select>
+        </div>
+      )}
       <div className="field">
         <label>Notas</label>
         <input type="text" value={notas} onChange={(e) => setNotas(e.target.value)} />
@@ -288,7 +303,14 @@ function AnimalRow({ animal, onChange }: { animal: Animal; onChange: () => void 
   return (
     <tr>
       <td>{animal.identificador ?? <span className="muted">—</span>}</td>
-      <td><span className="badge">{SEXO_SHORT[animal.sexo]}</span></td>
+      <td>
+        <span className="badge">{SEXO_SHORT[animal.sexo]}</span>
+        {animal.sexo === 'VP' && animal.criaSexo && (
+          <span className="muted" style={{ marginLeft: 4, fontSize: '0.75rem' }}>
+            +{CRIA_SEXO_LABELS[animal.criaSexo]}
+          </span>
+        )}
+      </td>
       <td>{animal.peso ? fmtNum(animal.peso) : '—'}</td>
       <td>
         <div className="row">

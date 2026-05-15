@@ -6,13 +6,15 @@ import { requireAuth } from '../middleware/auth.js';
 const router = Router();
 router.use(requireAuth);
 
-const sexoEnum = z.enum(['VP', 'HV', 'HL', 'ML', 'MC']);
+const sexoEnum = z.enum(['VP', 'HV', 'HL', 'ML', 'MC', 'TO']);
+const criaSexoEnum = z.enum(['M', 'H']);
 
 const animalSchema = z.object({
   loteId: z.string().min(1),
   identificador: z.string().optional().nullable(),
   sexo: sexoEnum,
   peso: z.coerce.number().min(0).optional().nullable(),
+  criaSexo: criaSexoEnum.optional().nullable(),
   notas: z.string().optional().nullable(),
 });
 
@@ -36,6 +38,7 @@ router.post('/', async (req, res) => {
       identificador: rest.identificador ?? null,
       sexo: rest.sexo,
       peso: rest.peso ?? null,
+      criaSexo: rest.sexo === 'VP' ? (rest.criaSexo ?? null) : null,
       notas: rest.notas ?? null,
     },
   });
@@ -61,6 +64,7 @@ router.put('/:id', async (req, res) => {
       ...(d.identificador !== undefined && { identificador: d.identificador }),
       ...(d.sexo !== undefined && { sexo: d.sexo }),
       ...(d.peso !== undefined && { peso: d.peso }),
+      ...(d.criaSexo !== undefined && { criaSexo: d.criaSexo }),
       ...(d.notas !== undefined && { notas: d.notas }),
     },
   });

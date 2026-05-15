@@ -1,4 +1,5 @@
-export type Sexo = 'VP' | 'HV' | 'HL' | 'ML' | 'MC';
+export type Sexo = 'VP' | 'HV' | 'HL' | 'ML' | 'MC' | 'TO';
+export type CriaSexo = 'M' | 'H';
 
 export const SEXO_LABELS: Record<Sexo, string> = {
   VP: 'Vaca parida (VP)',
@@ -6,6 +7,7 @@ export const SEXO_LABELS: Record<Sexo, string> = {
   HL: 'Hembra de levante / ternera (HL)',
   ML: 'Macho de levante / ternero (ML)',
   MC: 'Macho de ceba (MC)',
+  TO: 'Toro (TO)',
 };
 
 export const SEXO_SHORT: Record<Sexo, string> = {
@@ -14,6 +16,12 @@ export const SEXO_SHORT: Record<Sexo, string> = {
   HL: 'HL',
   ML: 'ML',
   MC: 'MC',
+  TO: 'TO',
+};
+
+export const CRIA_SEXO_LABELS: Record<CriaSexo, string> = {
+  M: 'Macho',
+  H: 'Hembra',
 };
 
 export type User = {
@@ -37,6 +45,8 @@ export type Lote = {
   deduccion: string;
   referencia: string | null;
   valorAPagar: string;
+  criasMacho: number;
+  criasHembra: number;
   notas: string | null;
   createdAt: string;
   updatedAt: string;
@@ -49,6 +59,7 @@ export type Animal = {
   identificador: string | null;
   sexo: Sexo;
   peso: string | null;
+  criaSexo: CriaSexo | null;
   notas: string | null;
   fotos?: Foto[];
 };

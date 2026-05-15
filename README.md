@@ -109,6 +109,10 @@ cd backend && npm run build    # dist/
 | HL | Hembra de levante / ternera |
 | ML | Macho de levante / ternero |
 | MC | Macho de ceba (machos más grandes) |
+| TO | Toro |
+
+Cuando el lote es **VP**, se registran `criasMacho` y `criasHembra` (cantidad por sexo de cría).
+Cuando un animal individual es **VP**, puede registrar el sexo de su cría (M/H).
 
 ## Notas
 

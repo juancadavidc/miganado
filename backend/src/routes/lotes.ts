@@ -6,7 +6,7 @@ import { requireAuth } from '../middleware/auth.js';
 const router = Router();
 router.use(requireAuth);
 
-const sexoEnum = z.enum(['VP', 'HV', 'HL', 'ML', 'MC']);
+const sexoEnum = z.enum(['VP', 'HV', 'HL', 'ML', 'MC', 'TO']);
 
 const loteSchema = z.object({
   fecha: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
@@ -21,6 +21,8 @@ const loteSchema = z.object({
   deduccion: z.coerce.number().min(0).default(0),
   referencia: z.string().optional().nullable(),
   valorAPagar: z.coerce.number().min(0).default(0),
+  criasMacho: z.coerce.number().int().min(0).default(0),
+  criasHembra: z.coerce.number().int().min(0).default(0),
   notas: z.string().optional().nullable(),
 });
 
@@ -68,6 +70,8 @@ router.post('/', async (req, res) => {
       deduccion: data.deduccion,
       referencia: data.referencia ?? null,
       valorAPagar: data.valorAPagar,
+      criasMacho: data.criasMacho,
+      criasHembra: data.criasHembra,
       notas: data.notas ?? null,
     },
   });
@@ -99,6 +103,8 @@ router.put('/:id', async (req, res) => {
       ...(d.deduccion !== undefined && { deduccion: d.deduccion }),
       ...(d.referencia !== undefined && { referencia: d.referencia }),
       ...(d.valorAPagar !== undefined && { valorAPagar: d.valorAPagar }),
+      ...(d.criasMacho !== undefined && { criasMacho: d.criasMacho }),
+      ...(d.criasHembra !== undefined && { criasHembra: d.criasHembra }),
       ...(d.notas !== undefined && { notas: d.notas }),
     },
   });
