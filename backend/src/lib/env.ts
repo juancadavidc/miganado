@@ -13,4 +13,6 @@ export const env = {
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN ?? '7d',
   UPLOAD_DIR: process.env.UPLOAD_DIR ?? './uploads',
   CORS_ORIGIN: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? '',
+  ANTHROPIC_MODEL: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6',
 };

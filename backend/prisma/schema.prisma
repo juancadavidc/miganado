@@ -54,9 +54,10 @@ model Lote {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  animales Animal[]
-  gastos   Gasto[]
-  fotos    Foto[]
+  animales    Animal[]
+  gastos      Gasto[]
+  fotos       Foto[]
+  anotaciones Anotacion[]
 
   @@index([userId, fecha])
 }
@@ -73,7 +74,8 @@ model Animal {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  fotos Foto[]
+  fotos       Foto[]
+  anotaciones Anotacion[]
 
   @@index([loteId])
 }
@@ -86,6 +88,8 @@ model Gasto {
   monto       Decimal  @db.Decimal(14, 2)
   fecha       DateTime @default(now())
   createdAt   DateTime @default(now())
+
+  anotaciones Anotacion[]
 
   @@index([loteId])
 }
@@ -103,4 +107,21 @@ model Foto {
 
   @@index([loteId])
   @@index([animalId])
+}
+
+model Anotacion {
+  id        String   @id @default(cuid())
+  loteId    String?
+  lote      Lote?    @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  animalId  String?
+  animal    Animal?  @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  gastoId   String?
+  gasto     Gasto?   @relation(fields: [gastoId], references: [id], onDelete: Cascade)
+  texto     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([loteId])
+  @@index([animalId])
+  @@index([gastoId])
 }

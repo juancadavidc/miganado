@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sparkles, AlertCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Sparkles, AlertCircle, Upload } from 'lucide-react';
 import { api, ApiError } from '../api/client';
 import type { Sexo, Lote } from '../types';
 import { SEXO_LABELS } from '../types';
@@ -89,6 +89,10 @@ export function LoteFormPage() {
             <p className="subtitle">Registra una entrega a la feria</p>
           </div>
         </div>
+        <Link to="/lotes/importar" className="btn-secondary">
+          <Upload size={16} aria-hidden="true" />
+          Importar desde imagen
+        </Link>
       </header>
 
       <form onSubmit={onSubmit} className="card">

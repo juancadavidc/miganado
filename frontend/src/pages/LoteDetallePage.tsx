@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Trash2, Plus, X, Upload, Camera, ImageOff,
-  AlertCircle, Receipt, ListOrdered, Calendar,
+  AlertCircle, Receipt, ListOrdered, Calendar, MessageSquare,
 } from 'lucide-react';
 import { api, ApiError } from '../api/client';
 import type { Animal, CriaSexo, Foto, Gasto, LoteDetalle, Sexo } from '../types';
@@ -10,6 +10,7 @@ import { CRIA_SEXO_LABELS, SEXO_LABELS } from '../types';
 import { fmtDate, fmtMoney, fmtNum } from '../lib/format';
 import { SexoBadge } from '../components/SexoBadge';
 import { useConfirm } from '../components/ConfirmDialog';
+import { Anotaciones } from '../components/Anotaciones';
 
 const SEXOS: Sexo[] = ['VP', 'HV', 'HL', 'ML', 'MC', 'TO'];
 
@@ -121,6 +122,7 @@ export function LoteDetallePage() {
       </section>
 
       <SeccionFotos lote={lote} onChange={cargar} ask={ask} />
+      <SeccionAnotacionesLote lote={lote} onChange={cargar} />
       <SeccionAnimales lote={lote} onChange={cargar} ask={ask} />
       <SeccionGastos lote={lote} onChange={cargar} ask={ask} />
 
@@ -130,6 +132,25 @@ export function LoteDetallePage() {
 }
 
 type Asker = ReturnType<typeof useConfirm>['ask'];
+
+function SeccionAnotacionesLote({ lote, onChange }: { lote: LoteDetalle; onChange: () => void }) {
+  return (
+    <section className="card" style={{ marginBottom: 'var(--space-4)' }}>
+      <div className="row-between" style={{ marginBottom: 'var(--space-3)' }}>
+        <h2 className="row" style={{ gap: 'var(--space-2)' }}>
+          <MessageSquare size={18} aria-hidden="true" />
+          Anotaciones del lote
+          <span className="muted tabnum">({lote.anotaciones.length})</span>
+        </h2>
+      </div>
+      <Anotaciones
+        target={{ loteId: lote.id }}
+        anotaciones={lote.anotaciones}
+        onChange={onChange}
+      />
+    </section>
+  );
+}
 
 function SeccionFotos({ lote, onChange, ask }: { lote: LoteDetalle; onChange: () => void; ask: Asker }) {
   const [uploading, setUploading] = useState(false);
@@ -354,6 +375,7 @@ function AnimalForm({ loteId, defaultSexo, onDone }: { loteId: string; defaultSe
 
 function AnimalRow({ animal, onChange, ask }: { animal: Animal; onChange: () => void; ask: Asker }) {
   const [uploading, setUploading] = useState(false);
+  const anotaciones = animal.anotaciones ?? [];
 
   async function onDelete() {
     const ok = await ask({
@@ -381,49 +403,61 @@ function AnimalRow({ animal, onChange, ask }: { animal: Animal; onChange: () => 
   }
 
   return (
-    <tr>
-      <td>{animal.identificador ?? <span className="muted">—</span>}</td>
-      <td>
-        <SexoBadge
-          sexo={animal.sexo}
-          criaSexo={animal.sexo === 'VP' ? animal.criaSexo : null}
-        />
-        {animal.sexo === 'VP' && animal.criaSexo && (
-          <span className="muted" style={{ marginLeft: 6, fontSize: '0.75rem' }}>
-            {CRIA_SEXO_LABELS[animal.criaSexo]}
-          </span>
-        )}
-      </td>
-      <td className="num">{animal.peso ? fmtNum(animal.peso) : '—'}</td>
-      <td>
-        <div className="row" style={{ gap: 'var(--space-2)' }}>
-          {(animal.fotos ?? []).slice(0, 3).map((f) => (
-            <img key={f.id} className="thumb" src={`/uploads/${f.filename}`} alt="" />
-          ))}
-          <label className="btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
-            {uploading ? '…' : <><Plus size={12} /> foto</>}
-            <input
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              disabled={uploading}
-              onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
-            />
-          </label>
-        </div>
-      </td>
-      <td>{animal.notas ?? <span className="muted">—</span>}</td>
-      <td>
-        <button
-          type="button"
-          className="btn-danger btn-icon btn-sm"
-          onClick={onDelete}
-          aria-label="Eliminar animal"
-        >
-          <Trash2 size={14} />
-        </button>
-      </td>
-    </tr>
+    <>
+      <tr>
+        <td>{animal.identificador ?? <span className="muted">—</span>}</td>
+        <td>
+          <SexoBadge
+            sexo={animal.sexo}
+            criaSexo={animal.sexo === 'VP' ? animal.criaSexo : null}
+          />
+          {animal.sexo === 'VP' && animal.criaSexo && (
+            <span className="muted" style={{ marginLeft: 6, fontSize: '0.75rem' }}>
+              {CRIA_SEXO_LABELS[animal.criaSexo]}
+            </span>
+          )}
+        </td>
+        <td className="num">{animal.peso ? fmtNum(animal.peso) : '—'}</td>
+        <td>
+          <div className="row" style={{ gap: 'var(--space-2)' }}>
+            {(animal.fotos ?? []).slice(0, 3).map((f) => (
+              <img key={f.id} className="thumb" src={`/uploads/${f.filename}`} alt="" />
+            ))}
+            <label className="btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
+              {uploading ? '…' : <><Plus size={12} /> foto</>}
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                disabled={uploading}
+                onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
+              />
+            </label>
+          </div>
+        </td>
+        <td>{animal.notas ?? <span className="muted">—</span>}</td>
+        <td>
+          <button
+            type="button"
+            className="btn-danger btn-icon btn-sm"
+            onClick={onDelete}
+            aria-label="Eliminar animal"
+          >
+            <Trash2 size={14} />
+          </button>
+        </td>
+      </tr>
+      <tr>
+        <td colSpan={6} style={{ paddingTop: 0 }}>
+          <Anotaciones
+            compact
+            target={{ animalId: animal.id }}
+            anotaciones={anotaciones}
+            onChange={onChange}
+          />
+        </td>
+      </tr>
+    </>
   );
 }
 
@@ -509,26 +543,53 @@ function SeccionGastos({ lote, onChange, ask }: { lote: LoteDetalle; onChange: (
             </thead>
             <tbody>
               {lote.gastos.map((g) => (
-                <tr key={g.id}>
-                  <td>{fmtDate(g.fecha)}</td>
-                  <td>{g.descripcion}</td>
-                  <td className="num">{fmtMoney(g.monto)}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className="btn-danger btn-icon btn-sm"
-                      onClick={() => onDelete(g)}
-                      aria-label="Eliminar gasto"
-                    >
-                      <X size={14} />
-                    </button>
-                  </td>
-                </tr>
+                <GastoRow key={g.id} gasto={g} onChange={onChange} onDelete={() => onDelete(g)} />
               ))}
             </tbody>
           </table>
         </div>
       )}
     </section>
+  );
+}
+
+function GastoRow({
+  gasto,
+  onChange,
+  onDelete,
+}: {
+  gasto: Gasto;
+  onChange: () => void;
+  onDelete: () => void;
+}) {
+  const anotaciones = gasto.anotaciones ?? [];
+  return (
+    <>
+      <tr>
+        <td>{fmtDate(gasto.fecha)}</td>
+        <td>{gasto.descripcion}</td>
+        <td className="num">{fmtMoney(gasto.monto)}</td>
+        <td>
+          <button
+            type="button"
+            className="btn-danger btn-icon btn-sm"
+            onClick={onDelete}
+            aria-label="Eliminar gasto"
+          >
+            <X size={14} />
+          </button>
+        </td>
+      </tr>
+      <tr>
+        <td colSpan={4} style={{ paddingTop: 0 }}>
+          <Anotaciones
+            compact
+            target={{ gastoId: gasto.id }}
+            anotaciones={anotaciones}
+            onChange={onChange}
+          />
+        </td>
+      </tr>
+    </>
   );
 }

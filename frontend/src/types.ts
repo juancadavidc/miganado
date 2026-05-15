@@ -31,6 +31,16 @@ export type User = {
   createdAt?: string;
 };
 
+export type Anotacion = {
+  id: string;
+  loteId: string | null;
+  animalId: string | null;
+  gastoId: string | null;
+  texto: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Lote = {
   id: string;
   fecha: string;
@@ -62,6 +72,7 @@ export type Animal = {
   criaSexo: CriaSexo | null;
   notas: string | null;
   fotos?: Foto[];
+  anotaciones?: Anotacion[];
 };
 
 export type Gasto = {
@@ -70,6 +81,7 @@ export type Gasto = {
   descripcion: string;
   monto: string;
   fecha: string;
+  anotaciones?: Anotacion[];
 };
 
 export type Foto = {
@@ -86,4 +98,5 @@ export type LoteDetalle = Lote & {
   animales: Animal[];
   gastos: Gasto[];
   fotos: Foto[];
+  anotaciones: Anotacion[];
 };

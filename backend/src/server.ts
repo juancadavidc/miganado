@@ -4,9 +4,11 @@ import path from 'node:path';
 import { env } from './lib/env.js';
 import authRouter from './routes/auth.js';
 import lotesRouter from './routes/lotes.js';
+import lotesImportRouter from './routes/lotesImport.js';
 import animalesRouter from './routes/animales.js';
 import gastosRouter from './routes/gastos.js';
 import fotosRouter from './routes/fotos.js';
+import anotacionesRouter from './routes/anotaciones.js';
 
 const app = express();
 
@@ -16,10 +18,12 @@ app.use(express.json({ limit: '2mb' }));
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 app.use('/api/auth', authRouter);
+app.use('/api/lotes', lotesImportRouter);
 app.use('/api/lotes', lotesRouter);
 app.use('/api/animales', animalesRouter);
 app.use('/api/gastos', gastosRouter);
 app.use('/api/fotos', fotosRouter);
+app.use('/api/anotaciones', anotacionesRouter);
 
 // Servir las fotos subidas
 app.use('/uploads', express.static(path.resolve(env.UPLOAD_DIR)));

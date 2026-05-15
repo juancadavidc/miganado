@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoteFormPage } from './pages/LoteFormPage';
+import { LoteImportPage } from './pages/LoteImportPage';
 import { LoteDetallePage } from './pages/LoteDetallePage';
 
 function Protected({ children }: { children: JSX.Element }) {
@@ -35,6 +36,14 @@ export default function App() {
           element={
             <Protected>
               <LoteFormPage />
+            </Protected>
+          }
+        />
+        <Route
+          path="/lotes/importar"
+          element={
+            <Protected>
+              <LoteImportPage />
             </Protected>
           }
         />

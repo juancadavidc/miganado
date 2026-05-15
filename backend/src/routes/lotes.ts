@@ -41,9 +41,19 @@ router.get('/:id', async (req, res) => {
   const lote = await prisma.lote.findFirst({
     where: { id: req.params.id, userId: req.user!.userId },
     include: {
-      animales: { orderBy: { createdAt: 'asc' }, include: { fotos: true } },
-      gastos: { orderBy: { fecha: 'desc' } },
+      animales: {
+        orderBy: { createdAt: 'asc' },
+        include: {
+          fotos: true,
+          anotaciones: { orderBy: { createdAt: 'desc' } },
+        },
+      },
+      gastos: {
+        orderBy: { fecha: 'desc' },
+        include: { anotaciones: { orderBy: { createdAt: 'desc' } } },
+      },
       fotos: { where: { animalId: null }, orderBy: { createdAt: 'desc' } },
+      anotaciones: { orderBy: { createdAt: 'desc' } },
     },
   });
   if (!lote) return res.status(404).json({ error: 'Lote no encontrado' });

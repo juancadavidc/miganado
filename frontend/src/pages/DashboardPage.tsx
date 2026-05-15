@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Beef, Scale, Wallet, ArrowRight, PackageOpen, AlertCircle } from 'lucide-react';
+import { Plus, Beef, Scale, Wallet, ArrowRight, PackageOpen, AlertCircle, Upload } from 'lucide-react';
 import { api } from '../api/client';
 import type { Lote } from '../types';
 import { fmtDate, fmtMoney, fmtNum } from '../lib/format';
@@ -36,10 +36,16 @@ export function DashboardPage() {
           <h1>Mis lotes</h1>
           <p className="subtitle">Entregas registradas a la feria comercial</p>
         </div>
-        <Link to="/lotes/nuevo" className="btn">
-          <Plus size={16} aria-hidden="true" />
-          Nuevo lote
-        </Link>
+        <div className="row" style={{ gap: 'var(--space-2)' }}>
+          <Link to="/lotes/importar" className="btn-secondary">
+            <Upload size={16} aria-hidden="true" />
+            Importar planilla
+          </Link>
+          <Link to="/lotes/nuevo" className="btn">
+            <Plus size={16} aria-hidden="true" />
+            Nuevo lote
+          </Link>
+        </div>
       </header>
 
       {loading ? (
