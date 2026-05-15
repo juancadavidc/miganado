@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Plus, Beef, Scale, Wallet, ArrowRight, PackageOpen, AlertCircle } from 'lucide-react';
 import { api } from '../api/client';
 import type { Lote } from '../types';
-import { SEXO_SHORT } from '../types';
 import { fmtDate, fmtMoney, fmtNum } from '../lib/format';
+import { SexoBadge } from '../components/SexoBadge';
 
 export function DashboardPage() {
   const [lotes, setLotes] = useState<Lote[]>([]);
@@ -30,38 +31,35 @@ export function DashboardPage() {
 
   return (
     <div className="container">
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h1>Mis lotes</h1>
-        <Link to="/lotes/nuevo" className="btn">+ Nuevo lote</Link>
-      </div>
+      <header className="page-header">
+        <div>
+          <h1>Mis lotes</h1>
+          <p className="subtitle">Entregas registradas a la feria comercial</p>
+        </div>
+        <Link to="/lotes/nuevo" className="btn">
+          <Plus size={16} aria-hidden="true" />
+          Nuevo lote
+        </Link>
+      </header>
 
       {loading ? (
-        <p>Cargando…</p>
+        <LoadingState />
       ) : error ? (
-        <div className="error">{error}</div>
-      ) : lotes.length === 0 ? (
-        <div className="card">
-          <p className="muted">Aún no has registrado lotes.</p>
-          <Link to="/lotes/nuevo" className="btn">Crear el primero</Link>
+        <div className="error" role="alert">
+          <AlertCircle size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />
+          {error}
         </div>
+      ) : lotes.length === 0 ? (
+        <EmptyState />
       ) : (
         <>
-          <div className="grid-3" style={{ marginBottom: '1rem' }}>
-            <div className="card">
-              <div className="muted">Cantidad total</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 700 }}>{totales.cantidad}</div>
-            </div>
-            <div className="card">
-              <div className="muted">Peso total</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 700 }}>{fmtNum(totales.pesoTotal)} kg</div>
-            </div>
-            <div className="card">
-              <div className="muted">Valor a pagar</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 700 }}>{fmtMoney(totales.valorAPagar)}</div>
-            </div>
-          </div>
+          <section className="grid-3" style={{ marginBottom: 'var(--space-4)' }}>
+            <KpiCard icon={<Beef size={16} />} label="Cabezas en total" value={String(totales.cantidad)} />
+            <KpiCard icon={<Scale size={16} />} label="Peso total" value={`${fmtNum(totales.pesoTotal)}`} suffix="kg" />
+            <KpiCard icon={<Wallet size={16} />} label="Valor a pagar" value={fmtMoney(totales.valorAPagar)} />
+          </section>
 
-          <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
+          <section className="card card-pad-0 hide-mobile">
             <table className="table">
               <thead>
                 <tr>
@@ -69,10 +67,10 @@ export function DashboardPage() {
                   <th>Feria</th>
                   <th>Lote</th>
                   <th>Sexo</th>
-                  <th>Cant.</th>
-                  <th>Peso total</th>
-                  <th>Valor total</th>
-                  <th>A pagar</th>
+                  <th className="num">Cant.</th>
+                  <th className="num">Peso (kg)</th>
+                  <th className="num">Valor total</th>
+                  <th className="num">A pagar</th>
                   <th>Referencia</th>
                   <th></th>
                 </tr>
@@ -83,22 +81,100 @@ export function DashboardPage() {
                     <td>{fmtDate(l.fecha)}</td>
                     <td>{l.numeroFeria ?? '—'}</td>
                     <td>{l.loteNumero ?? '—'}</td>
-                    <td><span className="badge">{SEXO_SHORT[l.sexo]}</span></td>
-                    <td>{l.cantidad}</td>
-                    <td>{fmtNum(l.pesoTotal)}</td>
-                    <td>{fmtMoney(l.valorTotal)}</td>
-                    <td>{fmtMoney(l.valorAPagar)}</td>
+                    <td><SexoBadge sexo={l.sexo} /></td>
+                    <td className="num">{l.cantidad}</td>
+                    <td className="num">{fmtNum(l.pesoTotal)}</td>
+                    <td className="num">{fmtMoney(l.valorTotal)}</td>
+                    <td className="num"><strong>{fmtMoney(l.valorAPagar)}</strong></td>
                     <td>{l.referencia ?? '—'}</td>
                     <td>
-                      <Link to={`/lotes/${l.id}`}>Abrir</Link>
+                      <Link to={`/lotes/${l.id}`} aria-label={`Abrir lote ${l.loteNumero ?? l.id.slice(0, 6)}`}>
+                        <ArrowRight size={16} />
+                      </Link>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </section>
+
+          <section className="stack show-mobile">
+            {lotes.map((l) => (
+              <Link key={l.id} to={`/lotes/${l.id}`} className="lote-card">
+                <div className="lote-card-head">
+                  <div>
+                    <div style={{ fontWeight: 700 }}>{fmtDate(l.fecha)}</div>
+                    <div className="muted" style={{ fontSize: '0.8rem' }}>
+                      Feria {l.numeroFeria ?? '—'} · Lote {l.loteNumero ?? '—'}
+                    </div>
+                  </div>
+                  <SexoBadge sexo={l.sexo} />
+                </div>
+                <dl className="lote-card-body">
+                  <div>
+                    <dt>Cantidad</dt>
+                    <dd>{l.cantidad} cab.</dd>
+                  </div>
+                  <div>
+                    <dt>Peso</dt>
+                    <dd>{fmtNum(l.pesoTotal)} kg</dd>
+                  </div>
+                  <div>
+                    <dt>Valor</dt>
+                    <dd>{fmtMoney(l.valorTotal)}</dd>
+                  </div>
+                  <div>
+                    <dt>A pagar</dt>
+                    <dd style={{ color: 'var(--color-primary)' }}>{fmtMoney(l.valorAPagar)}</dd>
+                  </div>
+                </dl>
+              </Link>
+            ))}
+          </section>
         </>
       )}
+    </div>
+  );
+}
+
+function KpiCard({ icon, label, value, suffix }: { icon: React.ReactNode; label: string; value: string; suffix?: string }) {
+  return (
+    <div className="card kpi">
+      <div className="kpi-head">
+        <span>{label}</span>
+        <span className="ico">{icon}</span>
+      </div>
+      <div className="kpi-value">
+        {value}
+        {suffix && <span style={{ fontSize: '0.95rem', color: 'var(--color-text-muted)', fontWeight: 500, marginLeft: 4 }}>{suffix}</span>}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="card empty-state">
+      <span className="empty-icon"><PackageOpen size={28} /></span>
+      <h2>Aún no has registrado lotes</h2>
+      <p>Comienza creando tu primera entrega a la feria.</p>
+      <Link to="/lotes/nuevo" className="btn">
+        <Plus size={16} aria-hidden="true" />
+        Crear el primero
+      </Link>
+    </div>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="stack">
+      <div className="grid-3">
+        <div className="card" style={{ height: 96, background: 'var(--color-surface-2)' }} />
+        <div className="card" style={{ height: 96, background: 'var(--color-surface-2)' }} />
+        <div className="card" style={{ height: 96, background: 'var(--color-surface-2)' }} />
+      </div>
+      <div className="card" style={{ height: 240, background: 'var(--color-surface-2)' }} />
     </div>
   );
 }

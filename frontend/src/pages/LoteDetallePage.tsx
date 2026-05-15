@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import {
+  ArrowLeft, Trash2, Plus, X, Upload, Camera, ImageOff,
+  AlertCircle, Receipt, ListOrdered, Calendar,
+} from 'lucide-react';
 import { api, ApiError } from '../api/client';
 import type { Animal, CriaSexo, Foto, Gasto, LoteDetalle, Sexo } from '../types';
-import { CRIA_SEXO_LABELS, SEXO_LABELS, SEXO_SHORT } from '../types';
+import { CRIA_SEXO_LABELS, SEXO_LABELS } from '../types';
 import { fmtDate, fmtMoney, fmtNum } from '../lib/format';
+import { SexoBadge } from '../components/SexoBadge';
+import { useConfirm } from '../components/ConfirmDialog';
 
 const SEXOS: Sexo[] = ['VP', 'HV', 'HL', 'ML', 'MC', 'TO'];
 
@@ -13,6 +19,7 @@ export function LoteDetallePage() {
   const [lote, setLote] = useState<LoteDetalle | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { ask, dialog } = useConfirm();
 
   const cargar = useCallback(async () => {
     if (!id) return;
@@ -31,7 +38,13 @@ export function LoteDetallePage() {
 
   async function onDelete() {
     if (!lote) return;
-    if (!confirm('¿Eliminar este lote y todo su contenido?')) return;
+    const ok = await ask({
+      title: '¿Eliminar este lote?',
+      description: 'Se borrarán también sus animales, fotos y gastos. Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await api(`/api/lotes/${lote.id}`, { method: 'DELETE' });
       navigate('/');
@@ -40,8 +53,14 @@ export function LoteDetallePage() {
     }
   }
 
-  if (loading) return <div className="container">Cargando…</div>;
-  if (error) return <div className="container"><div className="error">{error}</div></div>;
+  if (loading) return <div className="container"><p className="muted">Cargando…</p></div>;
+  if (error) return (
+    <div className="container">
+      <div className="error" role="alert">
+        <AlertCircle size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} /> {error}
+      </div>
+    </div>
+  );
   if (!lote) return <div className="container">Lote no encontrado</div>;
 
   const gastosTotal = lote.gastos.reduce((s, g) => s + Number(g.monto), 0);
@@ -49,51 +68,70 @@ export function LoteDetallePage() {
 
   return (
     <div className="container">
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <div>
-          <h1>Lote {lote.loteNumero ?? '—'} · {fmtDate(lote.fecha)}</h1>
-          <p className="muted">
-            Feria {lote.numeroFeria ?? '—'} · <span className="badge">{SEXO_SHORT[lote.sexo]}</span> · {lote.cantidad} cabezas · Ref. {lote.referencia ?? '—'}
-            {lote.sexo === 'VP' && (lote.criasMacho > 0 || lote.criasHembra > 0) && (
-              <> · Crías: <strong>{lote.criasMacho}</strong>🐂 / <strong>{lote.criasHembra}</strong>🐄</>
-            )}
-          </p>
+      <header className="page-header">
+        <div className="row" style={{ gap: 'var(--space-2)' }}>
+          <button type="button" className="btn-ghost btn-icon" onClick={() => navigate('/')} aria-label="Volver al dashboard">
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1>Lote {lote.loteNumero ?? '—'}</h1>
+            <p className="subtitle row" style={{ gap: 'var(--space-2)' }}>
+              <Calendar size={13} aria-hidden="true" />
+              {fmtDate(lote.fecha)}
+              <span aria-hidden="true">·</span>
+              Feria {lote.numeroFeria ?? '—'}
+              <span aria-hidden="true">·</span>
+              <SexoBadge sexo={lote.sexo} />
+              <span aria-hidden="true">·</span>
+              {lote.cantidad} {lote.cantidad === 1 ? 'cabeza' : 'cabezas'}
+              {lote.referencia && (<><span aria-hidden="true">·</span>Ref. {lote.referencia}</>)}
+            </p>
+          </div>
         </div>
-        <button className="btn-danger" onClick={onDelete}>Eliminar lote</button>
-      </div>
+        <button className="btn-danger" onClick={onDelete}>
+          <Trash2 size={16} aria-hidden="true" />
+          Eliminar lote
+        </button>
+      </header>
 
-      <div className="grid-3" style={{ marginBottom: '1rem' }}>
-        <div className="card">
-          <div className="muted">Peso total / promedio</div>
-          <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>
-            {fmtNum(lote.pesoTotal)} kg
-            <span className="muted" style={{ fontSize: '0.85rem' }}> · {fmtNum(lote.pesoPromedio)} kg/cab</span>
-          </div>
+      {lote.sexo === 'VP' && (lote.criasMacho > 0 || lote.criasHembra > 0) && (
+        <div className="callout warn" style={{ marginBottom: 'var(--space-4)' }}>
+          Vienen acompañadas de <strong>{lote.criasMacho}</strong> {lote.criasMacho === 1 ? 'cría macho' : 'crías macho'}
+          {' y '}
+          <strong>{lote.criasHembra}</strong> {lote.criasHembra === 1 ? 'cría hembra' : 'crías hembra'}.
         </div>
-        <div className="card">
-          <div className="muted">Valor total / deducción</div>
-          <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>
-            {fmtMoney(lote.valorTotal)}
-            <span className="muted" style={{ fontSize: '0.85rem' }}> · −{fmtMoney(lote.deduccion)}</span>
-          </div>
-        </div>
-        <div className="card">
-          <div className="muted">A pagar · Utilidad (− gastos)</div>
-          <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>
-            {fmtMoney(lote.valorAPagar)}
-            <span className="muted" style={{ fontSize: '0.85rem' }}> · {fmtMoney(utilidad)}</span>
-          </div>
-        </div>
-      </div>
+      )}
 
-      <SeccionFotos lote={lote} onChange={cargar} />
-      <SeccionAnimales lote={lote} onChange={cargar} />
-      <SeccionGastos lote={lote} onChange={cargar} />
+      <section className="grid-3" style={{ marginBottom: 'var(--space-4)' }}>
+        <div className="card">
+          <div className="label-cap">Peso</div>
+          <div className="kpi-value">{fmtNum(lote.pesoTotal)} kg</div>
+          <div className="kpi-sub">Promedio: {fmtNum(lote.pesoPromedio)} kg / cabeza</div>
+        </div>
+        <div className="card">
+          <div className="label-cap">Valor total</div>
+          <div className="kpi-value">{fmtMoney(lote.valorTotal)}</div>
+          <div className="kpi-sub">Deducción: −{fmtMoney(lote.deduccion)}</div>
+        </div>
+        <div className="card">
+          <div className="label-cap">A pagar / Utilidad</div>
+          <div className="kpi-value" style={{ color: 'var(--color-primary)' }}>{fmtMoney(lote.valorAPagar)}</div>
+          <div className="kpi-sub">Utilidad (− gastos): <strong className="tabnum">{fmtMoney(utilidad)}</strong></div>
+        </div>
+      </section>
+
+      <SeccionFotos lote={lote} onChange={cargar} ask={ask} />
+      <SeccionAnimales lote={lote} onChange={cargar} ask={ask} />
+      <SeccionGastos lote={lote} onChange={cargar} ask={ask} />
+
+      {dialog}
     </div>
   );
 }
 
-function SeccionFotos({ lote, onChange }: { lote: LoteDetalle; onChange: () => void }) {
+type Asker = ReturnType<typeof useConfirm>['ask'];
+
+function SeccionFotos({ lote, onChange, ask }: { lote: LoteDetalle; onChange: () => void; ask: Asker }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,7 +152,13 @@ function SeccionFotos({ lote, onChange }: { lote: LoteDetalle; onChange: () => v
   }
 
   async function onDelete(foto: Foto) {
-    if (!confirm('¿Eliminar foto?')) return;
+    const ok = await ask({
+      title: '¿Eliminar foto?',
+      description: 'No se podrá recuperar.',
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await api(`/api/fotos/${foto.id}`, { method: 'DELETE' });
       onChange();
@@ -124,11 +168,16 @@ function SeccionFotos({ lote, onChange }: { lote: LoteDetalle; onChange: () => v
   }
 
   return (
-    <section className="card" style={{ marginBottom: '1rem' }}>
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h2>Fotos del lote ({lote.fotos.length})</h2>
+    <section className="card" style={{ marginBottom: 'var(--space-4)' }}>
+      <div className="row-between" style={{ marginBottom: 'var(--space-3)' }}>
+        <h2 className="row" style={{ gap: 'var(--space-2)' }}>
+          <Camera size={18} aria-hidden="true" />
+          Fotos del lote
+          <span className="muted tabnum">({lote.fotos.length})</span>
+        </h2>
         <label className="btn">
-          {uploading ? 'Subiendo…' : '+ Subir foto'}
+          <Upload size={16} aria-hidden="true" />
+          {uploading ? 'Subiendo…' : 'Subir foto'}
           <input
             type="file"
             accept="image/*"
@@ -138,20 +187,29 @@ function SeccionFotos({ lote, onChange }: { lote: LoteDetalle; onChange: () => v
           />
         </label>
       </div>
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <div className="error" role="alert">
+          <AlertCircle size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} /> {error}
+        </div>
+      )}
       {lote.fotos.length === 0 ? (
-        <p className="muted">Sin fotos</p>
+        <div className="muted row" style={{ gap: 'var(--space-2)' }}>
+          <ImageOff size={16} aria-hidden="true" /> Sin fotos
+        </div>
       ) : (
         <div className="photo-grid">
           {lote.fotos.map((f) => (
-            <div key={f.id} style={{ position: 'relative' }}>
-              <img src={`/uploads/${f.filename}`} alt="" />
+            <div key={f.id} className="photo">
+              <a href={`/uploads/${f.filename}`} target="_blank" rel="noreferrer">
+                <img src={`/uploads/${f.filename}`} alt={`Foto del lote ${lote.loteNumero ?? ''}`} loading="lazy" />
+              </a>
               <button
-                className="btn-danger"
-                style={{ position: 'absolute', top: 4, right: 4, padding: '0.15rem 0.4rem', fontSize: '0.75rem' }}
+                type="button"
+                className="btn-icon photo-del"
                 onClick={() => onDelete(f)}
+                aria-label="Eliminar foto"
               >
-                ✕
+                <X size={14} />
               </button>
             </div>
           ))}
@@ -161,14 +219,18 @@ function SeccionFotos({ lote, onChange }: { lote: LoteDetalle; onChange: () => v
   );
 }
 
-function SeccionAnimales({ lote, onChange }: { lote: LoteDetalle; onChange: () => void }) {
+function SeccionAnimales({ lote, onChange, ask }: { lote: LoteDetalle; onChange: () => void; ask: Asker }) {
   const [showForm, setShowForm] = useState(false);
   return (
-    <section className="card" style={{ marginBottom: '1rem' }}>
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h2>Animales individuales ({lote.animales.length})</h2>
-        <button onClick={() => setShowForm((s) => !s)}>
-          {showForm ? 'Cancelar' : '+ Agregar animal'}
+    <section className="card" style={{ marginBottom: 'var(--space-4)' }}>
+      <div className="row-between" style={{ marginBottom: 'var(--space-3)' }}>
+        <h2 className="row" style={{ gap: 'var(--space-2)' }}>
+          <ListOrdered size={18} aria-hidden="true" />
+          Animales individuales
+          <span className="muted tabnum">({lote.animales.length})</span>
+        </h2>
+        <button className={showForm ? 'btn-secondary' : ''} onClick={() => setShowForm((s) => !s)}>
+          {showForm ? <><X size={16} aria-hidden="true" />Cancelar</> : <><Plus size={16} aria-hidden="true" />Agregar animal</>}
         </button>
       </div>
       {showForm && (
@@ -187,7 +249,7 @@ function SeccionAnimales({ lote, onChange }: { lote: LoteDetalle; onChange: () =
               <tr>
                 <th>Identificador</th>
                 <th>Sexo</th>
-                <th>Peso (kg)</th>
+                <th className="num">Peso (kg)</th>
                 <th>Fotos</th>
                 <th>Notas</th>
                 <th></th>
@@ -195,7 +257,7 @@ function SeccionAnimales({ lote, onChange }: { lote: LoteDetalle; onChange: () =
             </thead>
             <tbody>
               {lote.animales.map((a) => (
-                <AnimalRow key={a.id} animal={a} onChange={onChange} />
+                <AnimalRow key={a.id} animal={a} onChange={onChange} ask={ask} />
               ))}
             </tbody>
           </table>
@@ -239,27 +301,35 @@ function AnimalForm({ loteId, defaultSexo, onDone }: { loteId: string; defaultSe
   }
 
   return (
-    <form onSubmit={onSubmit} style={{ background: '#fafbf7', padding: '0.75rem', borderRadius: 8, margin: '0.5rem 0' }}>
+    <form
+      onSubmit={onSubmit}
+      style={{
+        background: 'var(--color-surface-2)',
+        padding: 'var(--space-3)',
+        borderRadius: 'var(--radius-lg)',
+        margin: 'var(--space-2) 0 var(--space-3)',
+      }}
+    >
       <div className="grid-3">
         <div className="field">
-          <label>Identificador</label>
-          <input type="text" value={identificador} onChange={(e) => setIdentificador(e.target.value)} placeholder="ej. AR-042" />
+          <label htmlFor="animal-id">Identificador</label>
+          <input id="animal-id" type="text" value={identificador} onChange={(e) => setIdentificador(e.target.value)} placeholder="ej. AR-042" />
         </div>
         <div className="field">
-          <label>Sexo</label>
-          <select value={sexo} onChange={(e) => setSexo(e.target.value as Sexo)}>
+          <label htmlFor="animal-sexo">Sexo</label>
+          <select id="animal-sexo" value={sexo} onChange={(e) => setSexo(e.target.value as Sexo)}>
             {SEXOS.map((s) => <option key={s} value={s}>{SEXO_LABELS[s]}</option>)}
           </select>
         </div>
         <div className="field">
-          <label>Peso (kg)</label>
-          <input type="number" step="0.01" min={0} value={peso} onChange={(e) => setPeso(e.target.value)} />
+          <label htmlFor="animal-peso">Peso (kg)</label>
+          <input id="animal-peso" type="number" step="0.01" min={0} value={peso} onChange={(e) => setPeso(e.target.value)} />
         </div>
       </div>
       {sexo === 'VP' && (
         <div className="field">
-          <label>Sexo de la cría</label>
-          <select value={criaSexo} onChange={(e) => setCriaSexo(e.target.value as CriaSexo | '')}>
+          <label htmlFor="animal-cria">Sexo de la cría</label>
+          <select id="animal-cria" value={criaSexo} onChange={(e) => setCriaSexo(e.target.value as CriaSexo | '')}>
             <option value="">— sin especificar —</option>
             <option value="M">Macho</option>
             <option value="H">Hembra</option>
@@ -267,10 +337,14 @@ function AnimalForm({ loteId, defaultSexo, onDone }: { loteId: string; defaultSe
         </div>
       )}
       <div className="field">
-        <label>Notas</label>
-        <input type="text" value={notas} onChange={(e) => setNotas(e.target.value)} />
+        <label htmlFor="animal-notas">Notas</label>
+        <input id="animal-notas" type="text" value={notas} onChange={(e) => setNotas(e.target.value)} />
       </div>
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <div className="error" role="alert">
+          <AlertCircle size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} /> {error}
+        </div>
+      )}
       <div className="row" style={{ justifyContent: 'flex-end' }}>
         <button type="submit" disabled={loading}>{loading ? 'Guardando…' : 'Guardar animal'}</button>
       </div>
@@ -278,11 +352,17 @@ function AnimalForm({ loteId, defaultSexo, onDone }: { loteId: string; defaultSe
   );
 }
 
-function AnimalRow({ animal, onChange }: { animal: Animal; onChange: () => void }) {
+function AnimalRow({ animal, onChange, ask }: { animal: Animal; onChange: () => void; ask: Asker }) {
   const [uploading, setUploading] = useState(false);
 
   async function onDelete() {
-    if (!confirm(`¿Eliminar animal ${animal.identificador ?? animal.id.slice(0, 6)}?`)) return;
+    const ok = await ask({
+      title: `¿Eliminar animal ${animal.identificador ?? animal.id.slice(0, 6)}?`,
+      description: 'No se podrá recuperar.',
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
     await api(`/api/animales/${animal.id}`, { method: 'DELETE' });
     onChange();
   }
@@ -304,21 +384,24 @@ function AnimalRow({ animal, onChange }: { animal: Animal; onChange: () => void 
     <tr>
       <td>{animal.identificador ?? <span className="muted">—</span>}</td>
       <td>
-        <span className="badge">{SEXO_SHORT[animal.sexo]}</span>
+        <SexoBadge
+          sexo={animal.sexo}
+          criaSexo={animal.sexo === 'VP' ? animal.criaSexo : null}
+        />
         {animal.sexo === 'VP' && animal.criaSexo && (
-          <span className="muted" style={{ marginLeft: 4, fontSize: '0.75rem' }}>
-            +{CRIA_SEXO_LABELS[animal.criaSexo]}
+          <span className="muted" style={{ marginLeft: 6, fontSize: '0.75rem' }}>
+            {CRIA_SEXO_LABELS[animal.criaSexo]}
           </span>
         )}
       </td>
-      <td>{animal.peso ? fmtNum(animal.peso) : '—'}</td>
+      <td className="num">{animal.peso ? fmtNum(animal.peso) : '—'}</td>
       <td>
-        <div className="row">
+        <div className="row" style={{ gap: 'var(--space-2)' }}>
           {(animal.fotos ?? []).slice(0, 3).map((f) => (
-            <img key={f.id} src={`/uploads/${f.filename}`} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4 }} />
+            <img key={f.id} className="thumb" src={`/uploads/${f.filename}`} alt="" />
           ))}
-          <label style={{ cursor: 'pointer', color: 'var(--primary)', fontSize: '0.85rem' }}>
-            {uploading ? '…' : '+ foto'}
+          <label className="btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
+            {uploading ? '…' : <><Plus size={12} /> foto</>}
             <input
               type="file"
               accept="image/*"
@@ -331,13 +414,20 @@ function AnimalRow({ animal, onChange }: { animal: Animal; onChange: () => void 
       </td>
       <td>{animal.notas ?? <span className="muted">—</span>}</td>
       <td>
-        <button className="btn-danger" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }} onClick={onDelete}>Eliminar</button>
+        <button
+          type="button"
+          className="btn-danger btn-icon btn-sm"
+          onClick={onDelete}
+          aria-label="Eliminar animal"
+        >
+          <Trash2 size={14} />
+        </button>
       </td>
     </tr>
   );
 }
 
-function SeccionGastos({ lote, onChange }: { lote: LoteDetalle; onChange: () => void }) {
+function SeccionGastos({ lote, onChange, ask }: { lote: LoteDetalle; onChange: () => void; ask: Asker }) {
   const [descripcion, setDescripcion] = useState('');
   const [monto, setMonto] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -365,46 +455,73 @@ function SeccionGastos({ lote, onChange }: { lote: LoteDetalle; onChange: () => 
   }
 
   async function onDelete(gasto: Gasto) {
-    if (!confirm('¿Eliminar gasto?')) return;
+    const ok = await ask({
+      title: '¿Eliminar gasto?',
+      description: gasto.descripcion,
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
     await api(`/api/gastos/${gasto.id}`, { method: 'DELETE' });
     onChange();
   }
 
   return (
-    <section className="card" style={{ marginBottom: '1rem' }}>
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h2>Gastos extras ({lote.gastos.length}) · {fmtMoney(total)}</h2>
+    <section className="card" style={{ marginBottom: 'var(--space-4)' }}>
+      <div className="row-between" style={{ marginBottom: 'var(--space-3)' }}>
+        <h2 className="row" style={{ gap: 'var(--space-2)' }}>
+          <Receipt size={18} aria-hidden="true" />
+          Gastos extras
+          <span className="muted tabnum">({lote.gastos.length})</span>
+        </h2>
+        <span className="badge" style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }}>
+          Total: {fmtMoney(total)}
+        </span>
       </div>
       <form onSubmit={onSubmit}>
         <div className="grid-3">
           <div className="field" style={{ gridColumn: 'span 2' }}>
-            <label>Descripción</label>
-            <input type="text" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} required />
+            <label htmlFor="gasto-desc">Descripción</label>
+            <input id="gasto-desc" type="text" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} required placeholder="ej. Transporte, comisión…" />
           </div>
           <div className="field">
-            <label>Monto ($)</label>
-            <input type="number" step="0.01" min={0} value={monto} onChange={(e) => setMonto(e.target.value)} required />
+            <label htmlFor="gasto-monto">Monto ($)</label>
+            <input id="gasto-monto" type="number" step="0.01" min={0} value={monto} onChange={(e) => setMonto(e.target.value)} required />
           </div>
         </div>
-        {error && <div className="error">{error}</div>}
+        {error && (
+          <div className="error" role="alert">
+            <AlertCircle size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} /> {error}
+          </div>
+        )}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
-          <button type="submit" disabled={loading}>{loading ? 'Guardando…' : '+ Agregar gasto'}</button>
+          <button type="submit" disabled={loading}>
+            <Plus size={16} aria-hidden="true" />
+            {loading ? 'Guardando…' : 'Agregar gasto'}
+          </button>
         </div>
       </form>
       {lote.gastos.length > 0 && (
-        <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
+        <div style={{ overflowX: 'auto', marginTop: 'var(--space-3)' }}>
           <table className="table">
             <thead>
-              <tr><th>Fecha</th><th>Descripción</th><th>Monto</th><th></th></tr>
+              <tr><th>Fecha</th><th>Descripción</th><th className="num">Monto</th><th></th></tr>
             </thead>
             <tbody>
               {lote.gastos.map((g) => (
                 <tr key={g.id}>
                   <td>{fmtDate(g.fecha)}</td>
                   <td>{g.descripcion}</td>
-                  <td>{fmtMoney(g.monto)}</td>
+                  <td className="num">{fmtMoney(g.monto)}</td>
                   <td>
-                    <button className="btn-danger" style={{ padding: '0.2rem 0.4rem', fontSize: '0.75rem' }} onClick={() => onDelete(g)}>✕</button>
+                    <button
+                      type="button"
+                      className="btn-danger btn-icon btn-sm"
+                      onClick={() => onDelete(g)}
+                      aria-label="Eliminar gasto"
+                    >
+                      <X size={14} />
+                    </button>
                   </td>
                 </tr>
               ))}
