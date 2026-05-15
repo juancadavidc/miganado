@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Sexo {
+  VP // Vaca parida
+  HV // Hembra de vientre / novilla
+  HL // Hembra de levante / ternera
+  ML // Macho de levante / ternero
+  MC // Macho de ceba
+}
+
+model User {
+  id           String   @id @default(cuid())
+  documento    String   @unique
+  nombre       String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  lotes Lote[]
+}
+
+model Lote {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fecha        DateTime
+  numeroFeria  String?
+  loteNumero   String?
+  sexo         Sexo
+  cantidad     Int      @default(1)
+  pesoTotal    Decimal  @db.Decimal(12, 2) @default(0)
+  pesoPromedio Decimal? @db.Decimal(12, 2)
+  valorFinal   Decimal  @db.Decimal(14, 2) @default(0)
+  valorTotal   Decimal  @db.Decimal(14, 2) @default(0)
+  deduccion    Decimal  @db.Decimal(14, 2) @default(0)
+  referencia   String?
+  valorAPagar  Decimal  @db.Decimal(14, 2) @default(0)
+  notas        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  animales Animal[]
+  gastos   Gasto[]
+  fotos    Foto[]
+
+  @@index([userId, fecha])
+}
+
+model Animal {
+  id         String   @id @default(cuid())
+  loteId     String
+  lote       Lote     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  identificador String?
+  sexo       Sexo
+  peso       Decimal? @db.Decimal(12, 2)
+  notas      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  fotos Foto[]
+
+  @@index([loteId])
+}
+
+model Gasto {
+  id          String   @id @default(cuid())
+  loteId      String
+  lote        Lote     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  descripcion String
+  monto       Decimal  @db.Decimal(14, 2)
+  fecha       DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([loteId])
+}
+
+model Foto {
+  id        String   @id @default(cuid())
+  loteId    String?
+  lote      Lote?    @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  animalId  String?
+  animal    Animal?  @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  filename  String
+  mimetype  String
+  size      Int
+  createdAt DateTime @default(now())
+
+  @@index([loteId])
+  @@index([animalId])
+}

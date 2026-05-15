@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: miganado-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: miganado
+      POSTGRES_PASSWORD: miganado_dev_password
+      POSTGRES_DB: miganado
+    ports:
+      - "5433:5432"
+    volumes:
+      - miganado_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U miganado -d miganado"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  miganado_pgdata:

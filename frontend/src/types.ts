@@ -1,0 +1,78 @@
+export type Sexo = 'VP' | 'HV' | 'HL' | 'ML' | 'MC';
+
+export const SEXO_LABELS: Record<Sexo, string> = {
+  VP: 'Vaca parida (VP)',
+  HV: 'Hembra de vientre / novilla (HV)',
+  HL: 'Hembra de levante / ternera (HL)',
+  ML: 'Macho de levante / ternero (ML)',
+  MC: 'Macho de ceba (MC)',
+};
+
+export const SEXO_SHORT: Record<Sexo, string> = {
+  VP: 'VP',
+  HV: 'HV',
+  HL: 'HL',
+  ML: 'ML',
+  MC: 'MC',
+};
+
+export type User = {
+  id: string;
+  documento: string;
+  nombre: string;
+  createdAt?: string;
+};
+
+export type Lote = {
+  id: string;
+  fecha: string;
+  numeroFeria: string | null;
+  loteNumero: string | null;
+  sexo: Sexo;
+  cantidad: number;
+  pesoTotal: string;
+  pesoPromedio: string | null;
+  valorFinal: string;
+  valorTotal: string;
+  deduccion: string;
+  referencia: string | null;
+  valorAPagar: string;
+  notas: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { animales: number; fotos: number; gastos: number };
+};
+
+export type Animal = {
+  id: string;
+  loteId: string;
+  identificador: string | null;
+  sexo: Sexo;
+  peso: string | null;
+  notas: string | null;
+  fotos?: Foto[];
+};
+
+export type Gasto = {
+  id: string;
+  loteId: string;
+  descripcion: string;
+  monto: string;
+  fecha: string;
+};
+
+export type Foto = {
+  id: string;
+  loteId: string | null;
+  animalId: string | null;
+  filename: string;
+  mimetype: string;
+  size: number;
+  createdAt: string;
+};
+
+export type LoteDetalle = Lote & {
+  animales: Animal[];
+  gastos: Gasto[];
+  fotos: Foto[];
+};

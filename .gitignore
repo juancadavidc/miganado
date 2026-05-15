@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+.vscode/
+.idea/
+coverage/
+
+# uploads (user content, no debe ir al repo)
+backend/uploads/
+
+# prisma local
+backend/prisma/migrations/dev.db*

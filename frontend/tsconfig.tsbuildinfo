@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/types.ts","./src/api/client.ts","./src/auth/AuthContext.tsx","./src/components/Navbar.tsx","./src/lib/format.ts","./src/pages/DashboardPage.tsx","./src/pages/LoginPage.tsx","./src/pages/LoteDetallePage.tsx","./src/pages/LoteFormPage.tsx","./src/pages/RegisterPage.tsx"],"version":"5.9.3"}
