@@ -221,8 +221,8 @@ function SeccionFotos({ lote, onChange, ask }: { lote: LoteDetalle; onChange: ()
         <div className="photo-grid">
           {lote.fotos.map((f) => (
             <div key={f.id} className="photo">
-              <a href={`/uploads/${f.filename}`} target="_blank" rel="noreferrer">
-                <img src={`/uploads/${f.filename}`} alt={`Foto del lote ${lote.loteNumero ?? ''}`} loading="lazy" />
+              <a href={f.url} target="_blank" rel="noreferrer">
+                <img src={f.url} alt={`Foto del lote ${lote.loteNumero ?? ''}`} loading="lazy" />
               </a>
               <button
                 type="button"
@@ -421,7 +421,7 @@ function AnimalRow({ animal, onChange, ask }: { animal: Animal; onChange: () => 
         <td>
           <div className="row" style={{ gap: 'var(--space-2)' }}>
             {(animal.fotos ?? []).slice(0, 3).map((f) => (
-              <img key={f.id} className="thumb" src={`/uploads/${f.filename}`} alt="" />
+              <img key={f.id} className="thumb" src={f.url} alt="" />
             ))}
             <label className="btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
               {uploading ? '…' : <><Plus size={12} /> foto</>}

@@ -1,28 +1,16 @@
 import { Router } from 'express';
 import path from 'node:path';
-import fs from 'node:fs';
 import multer from 'multer';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
-import { env } from '../lib/env.js';
+import { r2Put, r2Delete } from '../lib/r2.js';
+import { withUrl } from '../lib/foto.js';
 
 const router = Router();
 router.use(requireAuth);
 
-const uploadDir = path.resolve(env.UPLOAD_DIR);
-fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const safe = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${ext}`;
-    cb(null, safe);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (_req, file, cb) => {
     if (!file.mimetype.startsWith('image/')) return cb(new Error('Solo imágenes'));
@@ -30,13 +18,17 @@ const upload = multer({
   },
 });
 
+function makeKey(originalName: string): string {
+  const ext = path.extname(originalName).toLowerCase();
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${ext}`;
+}
+
 // Subir foto a un lote o a un animal
 router.post('/', upload.single('foto'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Archivo faltante (campo "foto")' });
 
   const { loteId, animalId } = req.body as { loteId?: string; animalId?: string };
   if (!loteId && !animalId) {
-    fs.unlinkSync(req.file.path);
     return res.status(400).json({ error: 'Debe especificar loteId o animalId' });
   }
 
@@ -47,7 +39,6 @@ router.post('/', upload.single('foto'), async (req, res) => {
       include: { lote: true },
     });
     if (!animal || animal.lote.userId !== req.user!.userId) {
-      fs.unlinkSync(req.file.path);
       return res.status(404).json({ error: 'Animal no encontrado' });
     }
   } else if (loteId) {
@@ -55,21 +46,23 @@ router.post('/', upload.single('foto'), async (req, res) => {
       where: { id: loteId, userId: req.user!.userId },
     });
     if (!lote) {
-      fs.unlinkSync(req.file.path);
       return res.status(404).json({ error: 'Lote no encontrado' });
     }
   }
+
+  const key = makeKey(req.file.originalname);
+  await r2Put(key, req.file.buffer, req.file.mimetype);
 
   const foto = await prisma.foto.create({
     data: {
       loteId: loteId ?? null,
       animalId: animalId ?? null,
-      filename: req.file.filename,
+      filename: key,
       mimetype: req.file.mimetype,
       size: req.file.size,
     },
   });
-  res.status(201).json({ foto });
+  res.status(201).json({ foto: withUrl(foto) });
 });
 
 router.delete('/:id', async (req, res) => {
@@ -84,8 +77,7 @@ router.delete('/:id', async (req, res) => {
     return res.status(404).json({ error: 'Foto no encontrada' });
   }
 
-  const filePath = path.join(uploadDir, foto.filename);
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  await r2Delete(foto.filename);
   await prisma.foto.delete({ where: { id: req.params.id } });
   res.status(204).end();
 });

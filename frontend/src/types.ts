@@ -92,6 +92,7 @@ export type Foto = {
   mimetype: string;
   size: number;
   createdAt: string;
+  url: string;
 };
 
 export type LoteDetalle = Lote & {

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { withUrl } from '../lib/foto.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -57,7 +58,12 @@ router.get('/:id', async (req, res) => {
     },
   });
   if (!lote) return res.status(404).json({ error: 'Lote no encontrado' });
-  res.json({ lote });
+  const loteConUrls = {
+    ...lote,
+    fotos: lote.fotos.map(withUrl),
+    animales: lote.animales.map((a) => ({ ...a, fotos: a.fotos.map(withUrl) })),
+  };
+  res.json({ lote: loteConUrls });
 });
 
 router.post('/', async (req, res) => {
