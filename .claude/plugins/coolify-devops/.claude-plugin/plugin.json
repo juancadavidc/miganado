@@ -1,0 +1,8 @@
+{
+  "name": "coolify-devops",
+  "version": "1.0.0",
+  "description": "DevOps agent for administrating a Coolify platform via SSH. Connects to the Coolify server to manage applications, databases, deployments, SSL, domains, and server resources.",
+  "author": {
+    "name": "Juan Carlos David"
+  }
+}
