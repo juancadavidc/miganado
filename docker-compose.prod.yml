@@ -1,34 +1,24 @@
 services:
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    image: miganado-backend:latest
+    image: ghcr.io/juancadavidc/miganado-backend:${IMAGE_TAG:-latest}
     container_name: miganado-backend
     restart: unless-stopped
+    pull_policy: always
+    env_file:
+      - .env.prod
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required (define it in .env.prod)}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required (define it in .env.prod)}
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required (define it in .env.prod)}
       PORT: 4000
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      CORS_ORIGIN: ${CORS_ORIGIN}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
-      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID}
-      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
-      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
-      R2_BUCKET: ${R2_BUCKET}
-      R2_PUBLIC_URL: ${R2_PUBLIC_URL}
     expose:
       - "4000"
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    image: miganado-frontend:latest
+    image: ghcr.io/juancadavidc/miganado-frontend:${IMAGE_TAG:-latest}
     container_name: miganado-frontend
     restart: unless-stopped
+    pull_policy: always
     ports:
       - "${HTTP_PORT:-80}:80"
     depends_on:
