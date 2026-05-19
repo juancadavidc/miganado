@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="miganado">
+  <rect width="512" height="512" fill="#fde68a"/>
+
+  <g>
+    <ellipse cx="130" cy="220" rx="48" ry="70" fill="#1f2937" transform="rotate(-15 130 220)"/>
+    <ellipse cx="130" cy="225" rx="22" ry="45" fill="#fda4af" transform="rotate(-15 130 225)"/>
+    <ellipse cx="382" cy="220" rx="48" ry="70" fill="#1f2937" transform="rotate(15 382 220)"/>
+    <ellipse cx="382" cy="225" rx="22" ry="45" fill="#fda4af" transform="rotate(15 382 225)"/>
+
+    <path d="M180 165 Q160 115 200 95 Q210 130 215 165 Z" fill="#fef3c7" stroke="#1f2937" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M332 165 Q352 115 312 95 Q302 130 297 165 Z" fill="#fef3c7" stroke="#1f2937" stroke-width="5" stroke-linejoin="round"/>
+
+    <ellipse cx="256" cy="280" rx="170" ry="155" fill="#fafaf9" stroke="#1f2937" stroke-width="6"/>
+
+    <path d="M140 240 Q120 200 165 195 Q200 200 195 250 Q170 270 140 240 Z" fill="#1f2937"/>
+    <path d="M395 250 Q420 215 375 200 Q345 215 355 255 Q380 270 395 250 Z" fill="#1f2937"/>
+
+    <path d="M225 145 Q256 120 287 145 Q280 170 256 160 Q232 170 225 145 Z" fill="#1f2937"/>
+
+    <ellipse cx="256" cy="355" rx="115" ry="80" fill="#fda4af" stroke="#1f2937" stroke-width="6"/>
+
+    <ellipse cx="218" cy="345" rx="13" ry="20" fill="#1f2937"/>
+    <ellipse cx="294" cy="345" rx="13" ry="20" fill="#1f2937"/>
+
+    <path d="M215 395 Q256 425 297 395" stroke="#1f2937" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+    <ellipse cx="205" cy="270" rx="20" ry="24" fill="#1f2937"/>
+    <ellipse cx="307" cy="270" rx="20" ry="24" fill="#1f2937"/>
+    <circle cx="212" cy="262" r="6" fill="#fafaf9"/>
+    <circle cx="314" cy="262" r="6" fill="#fafaf9"/>
+  </g>
+</svg>

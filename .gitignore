@@ -19,3 +19,9 @@ backend/uploads/
 
 # prisma local
 backend/prisma/migrations/dev.db*
+
+# PWA icons (generated from public/cow.svg en npm run build)
+frontend/public/pwa-*.png
+frontend/public/apple-touch-icon-*.png
+frontend/public/maskable-icon-*.png
+frontend/public/favicon.ico

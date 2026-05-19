@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "generate-pwa-assets": "pwa-assets-generator",
+    "build": "npm run generate-pwa-assets && tsc -b && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -17,8 +18,10 @@
   "devDependencies": {
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@vite-pwa/assets-generator": "^0.2.6",
     "@vitejs/plugin-react": "^4.7.0",
     "typescript": "^5.6.3",
-    "vite": "^6.4.2"
+    "vite": "^6.4.2",
+    "vite-plugin-pwa": "^0.21.0"
   }
 }
