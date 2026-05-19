@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "miganado-local",
+  "description": "Plugins locales del proyecto miganado",
+  "owner": {
+    "name": "Juan Carlos David"
+  },
+  "plugins": [
+    {
+      "name": "coolify-devops",
+      "description": "DevOps agent for administrating a Coolify platform via SSH. Connects to the Coolify server to manage applications, databases, deployments, SSL, domains, and server resources.",
+      "author": {
+        "name": "Juan Carlos David"
+      },
+      "category": "devops",
+      "source": "./.claude/plugins/coolify-devops",
+      "version": "1.0.0"
+    }
+  ]
+}
