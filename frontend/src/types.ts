@@ -38,6 +38,7 @@ export type Potrero = {
   ocupadoDesde: string | null;
   vacioDesde: string | null;
   notas: string | null;
+  metadatos: Record<string, string> | null;
   gridX: number | null;
   gridY: number | null;
   gridW: number;

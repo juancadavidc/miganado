@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -15,20 +16,41 @@ function rectsOverlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
+const metadatosSchema = z.record(z.string(), z.string());
+
 const createSchema = z.object({
   nombre: z.string().trim().min(1, 'El nombre es obligatorio'),
   notas: z.string().optional().nullable(),
+  metadatos: metadatosSchema.optional().nullable(),
 });
 
 const updateSchema = z.object({
   nombre: z.string().trim().min(1).optional(),
   notas: z.string().optional().nullable(),
+  metadatos: metadatosSchema.optional().nullable(),
   ocupado: z.boolean().optional(),
   gridX: z.coerce.number().int().min(0).nullable().optional(),
   gridY: z.coerce.number().int().min(0).nullable().optional(),
   gridW: z.coerce.number().int().min(1).max(GRID_COLS).optional(),
   gridH: z.coerce.number().int().min(1).optional(),
 });
+
+// Limpia el mapa de metadatos: descarta pares con clave o valor vacíos. Devuelve
+// el objeto saneado, o Prisma.DbNull para guardar NULL cuando queda vacío (un campo
+// Json? de Prisma no acepta `null` de JS directamente).
+function normalizeMetadatos(
+  raw: Record<string, string> | null | undefined,
+): Prisma.InputJsonObject | typeof Prisma.DbNull | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null) return Prisma.DbNull;
+  const limpio: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    const clave = k.trim();
+    const valor = (v ?? '').trim();
+    if (clave && valor) limpio[clave] = valor;
+  }
+  return Object.keys(limpio).length > 0 ? limpio : Prisma.DbNull;
+}
 
 router.get('/', async (req, res) => {
   const potreros = await prisma.potrero.findMany({
@@ -47,6 +69,7 @@ router.post('/', async (req, res) => {
       userId: req.user!.userId,
       nombre: parsed.data.nombre,
       notas: parsed.data.notas ?? null,
+      metadatos: normalizeMetadatos(parsed.data.metadatos),
       ocupado: false,
       vacioDesde: new Date(),
     },
@@ -67,6 +90,7 @@ router.put('/:id', async (req, res) => {
   const data: Record<string, unknown> = {};
   if (d.nombre !== undefined) data.nombre = d.nombre;
   if (d.notas !== undefined) data.notas = d.notas;
+  if (d.metadatos !== undefined) data.metadatos = normalizeMetadatos(d.metadatos);
   // Al cambiar el estado, marcamos la fecha del cambio: arranca el contador de
   // ocupación o el de descanso (tiempo sin ganado para recuperar el pasto).
   if (d.ocupado !== undefined && d.ocupado !== existing.ocupado) {

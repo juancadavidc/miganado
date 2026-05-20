@@ -791,6 +791,38 @@ label {
   padding-top: var(--space-2);
 }
 
+/* Metadatos clave/valor del potrero */
+.potrero-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-2);
+}
+.potrero-meta-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.potrero-meta-item dt { color: var(--color-text-muted); flex-shrink: 0; }
+.potrero-meta-item dd {
+  margin: 0;
+  color: var(--color-text);
+  font-weight: 500;
+  text-align: right;
+  word-break: break-word;
+}
+
+/* Editor de metadatos en el modal */
+.meta-editor { display: flex; flex-direction: column; gap: var(--space-2); }
+.meta-row { display: flex; align-items: center; gap: var(--space-2); }
+.meta-key { flex: 0 0 40%; min-width: 0; }
+.meta-val { flex: 1 1 auto; min-width: 0; }
+.meta-add { align-self: flex-start; }
+
 /* Pestañas segmentadas (Mapa / Lista) */
 .tabs {
   display: inline-flex;

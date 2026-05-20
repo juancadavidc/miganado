@@ -269,6 +269,17 @@ export function PotreroMapa({ potreros, busyId, onPersist, onToggle, onEdit, onD
               {fmtDias(diasDesde(selected.ocupado ? selected.ocupadoDesde : selected.vacioDesde))}
             </span>
           </div>
+          {selected.metadatos && Object.keys(selected.metadatos).length > 0 && (
+            <dl className="potrero-meta">
+              {Object.entries(selected.metadatos).map(([k, v]) => (
+                <div className="potrero-meta-item" key={k}>
+                  <dt>{k}</dt>
+                  <dd>{v}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {selected.notas && <p className="potrero-notas">{selected.notas}</p>}
           <div className="mapa-detail-actions">
             <button
               type="button"

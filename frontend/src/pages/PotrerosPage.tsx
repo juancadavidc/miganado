@@ -13,6 +13,18 @@ type ModalState =
   | { open: true; mode: 'crear' }
   | { open: true; mode: 'editar'; target: Potrero };
 
+type MetaPair = { key: string; value: string };
+
+// Sugerencias de campos comunes para el datalist; las claves siguen siendo libres.
+const META_SUGERENCIAS = [
+  'Área',
+  'Tipo de pasto',
+  'Capacidad de carga',
+  'Aforo',
+  'Fuente de agua',
+  'Topografía',
+];
+
 export function PotrerosPage() {
   const [potreros, setPotreros] = useState<Potrero[]>([]);
   const [loading, setLoading] = useState(true);
@@ -185,6 +197,17 @@ export function PotrerosPage() {
                     <div className="potrero-sub">Ocupado desde {fmtDate(p.ocupadoDesde)}</div>
                   )}
 
+                  {p.metadatos && Object.keys(p.metadatos).length > 0 && (
+                    <dl className="potrero-meta">
+                      {Object.entries(p.metadatos).map(([k, v]) => (
+                        <div className="potrero-meta-item" key={k}>
+                          <dt>{k}</dt>
+                          <dd>{v}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+
                   {p.notas && <p className="potrero-notas">{p.notas}</p>}
 
                   <div className="potrero-actions">
@@ -247,8 +270,24 @@ function PotreroModal({
 }) {
   const [nombre, setNombre] = useState(target?.nombre ?? '');
   const [notas, setNotas] = useState(target?.notas ?? '');
+  const [meta, setMeta] = useState<MetaPair[]>(() => {
+    const m = target?.metadatos;
+    return m && Object.keys(m).length > 0
+      ? Object.entries(m).map(([key, value]) => ({ key, value }))
+      : [];
+  });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  function updatePair(i: number, field: keyof MetaPair, val: string) {
+    setMeta((rows) => rows.map((r, idx) => (idx === i ? { ...r, [field]: val } : r)));
+  }
+  function addPair() {
+    setMeta((rows) => [...rows, { key: '', value: '' }]);
+  }
+  function removePair(i: number) {
+    setMeta((rows) => rows.filter((_, idx) => idx !== i));
+  }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -269,7 +308,17 @@ function PotreroModal({
     setError(null);
     setSaving(true);
     try {
-      const body = { nombre: nombre.trim(), notas: notas.trim() || null };
+      const metadatos: Record<string, string> = {};
+      for (const { key, value } of meta) {
+        const k = key.trim();
+        const v = value.trim();
+        if (k && v) metadatos[k] = v;
+      }
+      const body = {
+        nombre: nombre.trim(),
+        notas: notas.trim() || null,
+        metadatos: Object.keys(metadatos).length > 0 ? metadatos : null,
+      };
       const d = target
         ? await api<{ potrero: Potrero }>(`/api/potreros/${target.id}`, { method: 'PUT', body })
         : await api<{ potrero: Potrero }>('/api/potreros', { method: 'POST', body });
@@ -305,13 +354,52 @@ function PotreroModal({
             />
           </div>
           <div className="field">
+            <label>Datos del potrero</label>
+            <div className="meta-editor">
+              {meta.map((pair, i) => (
+                <div className="meta-row" key={i}>
+                  <input
+                    className="meta-key"
+                    list="potrero-meta-keys"
+                    value={pair.key}
+                    onChange={(e) => updatePair(i, 'key', e.target.value)}
+                    placeholder="Campo (ej. Área)"
+                    aria-label="Nombre del campo"
+                  />
+                  <input
+                    className="meta-val"
+                    value={pair.value}
+                    onChange={(e) => updatePair(i, 'value', e.target.value)}
+                    placeholder="Valor (ej. 3 ha)"
+                    aria-label="Valor del campo"
+                  />
+                  <button
+                    type="button"
+                    className="btn-ghost btn-icon"
+                    onClick={() => removePair(i)}
+                    aria-label="Quitar campo"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+              <datalist id="potrero-meta-keys">
+                {META_SUGERENCIAS.map((s) => <option key={s} value={s} />)}
+              </datalist>
+              <button type="button" className="btn-ghost btn-sm meta-add" onClick={addPair}>
+                <Plus size={15} aria-hidden="true" />
+                Agregar campo
+              </button>
+            </div>
+          </div>
+          <div className="field">
             <label htmlFor="potrero-notas">Notas</label>
             <textarea
               id="potrero-notas"
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
               rows={3}
-              placeholder="Tamaño, tipo de pasto, observaciones…"
+              placeholder="Observaciones libres…"
             />
           </div>
           {error && (

@@ -42,6 +42,7 @@ model Potrero {
   ocupadoDesde DateTime?
   vacioDesde   DateTime?
   notas        String?
+  metadatos    Json?
   gridX        Int?
   gridY        Int?
   gridW        Int       @default(1)
