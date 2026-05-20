@@ -31,6 +31,17 @@ export type User = {
   createdAt?: string;
 };
 
+export type Potrero = {
+  id: string;
+  nombre: string;
+  ocupado: boolean;
+  ocupadoDesde: string | null;
+  vacioDesde: string | null;
+  notas: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Anotacion = {
   id: string;
   loteId: string | null;

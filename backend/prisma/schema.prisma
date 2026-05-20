@@ -29,7 +29,23 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  lotes Lote[]
+  lotes    Lote[]
+  potreros Potrero[]
+}
+
+model Potrero {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nombre       String
+  ocupado      Boolean   @default(false)
+  ocupadoDesde DateTime?
+  vacioDesde   DateTime?
+  notas        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
 }
 
 model Lote {

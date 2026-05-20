@@ -8,6 +8,7 @@ import animalesRouter from './routes/animales.js';
 import gastosRouter from './routes/gastos.js';
 import fotosRouter from './routes/fotos.js';
 import anotacionesRouter from './routes/anotaciones.js';
+import potrerosRouter from './routes/potreros.js';
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use('/api/animales', animalesRouter);
 app.use('/api/gastos', gastosRouter);
 app.use('/api/fotos', fotosRouter);
 app.use('/api/anotaciones', anotacionesRouter);
+app.use('/api/potreros', potrerosRouter);
 
 // Manejo genérico de errores
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
