@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import {
-  Plus, Fence, Sprout, Beef, Clock, Pencil, Trash2, AlertCircle, X, Map, LayoutList,
+  Plus, Fence, Sprout, Beef, Clock, Pencil, Trash2, AlertCircle, X, Map, LayoutList, ArrowLeft,
 } from 'lucide-react';
 import { api, ApiError } from '../api/client';
-import type { Potrero } from '../types';
+import type { Finca, Potrero } from '../types';
 import { diasDesde, fmtDias, fmtDate } from '../lib/format';
 import { useConfirm } from '../components/ConfirmDialog';
 import { PotreroMapa, type GridCoords } from '../components/PotreroMapa';
@@ -25,21 +26,34 @@ const META_SUGERENCIAS = [
   'Topografía',
 ];
 
-export function PotrerosPage() {
+export function FincaDetallePage() {
+  const { id } = useParams<{ id: string }>();
+  const [finca, setFinca] = useState<Finca | null>(null);
   const [potreros, setPotreros] = useState<Potrero[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [modal, setModal] = useState<ModalState>({ open: false });
   const [busyId, setBusyId] = useState<string | null>(null);
   const [tab, setTab] = useState<'mapa' | 'lista'>('mapa');
   const { ask, dialog } = useConfirm();
 
   useEffect(() => {
-    api<{ potreros: Potrero[] }>('/api/potreros')
-      .then((d) => setPotreros(d.potreros))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Error'))
+    if (!id) return;
+    Promise.all([
+      api<{ finca: Finca }>(`/api/fincas/${id}`),
+      api<{ potreros: Potrero[] }>(`/api/potreros?fincaId=${id}`),
+    ])
+      .then(([f, p]) => {
+        setFinca(f.finca);
+        setPotreros(p.potreros);
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 404) setNotFound(true);
+        else setError(err instanceof ApiError ? err.message : 'Error');
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [id]);
 
   function upsert(p: Potrero) {
     setPotreros((list) => {
@@ -68,12 +82,12 @@ export function PotrerosPage() {
 
   // Guarda la posición/tamaño en el mapa de forma optimista; revierte si el
   // server rechaza (solapamiento o fuera de bounds en una carrera).
-  async function persistGrid(id: string, coords: GridCoords) {
-    const original = potreros.find((p) => p.id === id);
+  async function persistGrid(potreroId: string, coords: GridCoords) {
+    const original = potreros.find((p) => p.id === potreroId);
     if (!original) return;
     upsert({ ...original, ...coords });
     try {
-      const d = await api<{ potrero: Potrero }>(`/api/potreros/${id}`, { method: 'PUT', body: coords });
+      const d = await api<{ potrero: Potrero }>(`/api/potreros/${potreroId}`, { method: 'PUT', body: coords });
       upsert(d.potrero);
     } catch (err) {
       upsert(original);
@@ -100,15 +114,38 @@ export function PotrerosPage() {
     }
   }
 
+  if (notFound) {
+    return (
+      <div className="container">
+        <div className="card empty-state">
+          <span className="empty-icon"><Fence size={28} /></span>
+          <h2>Finca no encontrada</h2>
+          <p>La finca que buscas no existe o no es tuya.</p>
+          <Link to="/fincas" className="btn">
+            <ArrowLeft size={16} aria-hidden="true" />
+            Volver a fincas
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const ocupados = potreros.filter((p) => p.ocupado).length;
   const libres = potreros.length - ocupados;
 
   return (
     <div className="container">
+      <Link to="/fincas" className="btn-ghost btn-sm back-link">
+        <ArrowLeft size={15} aria-hidden="true" />
+        Fincas
+      </Link>
       <header className="page-header">
         <div>
-          <h1>Potreros</h1>
-          <p className="subtitle">Tus zonas de pastoreo y su estado de ocupación</p>
+          <h1>{finca?.nombre ?? 'Potreros'}</h1>
+          <p className="subtitle">
+            {finca ? `Mapa de ${finca.capacidad}×${finca.capacidad} · ` : ''}
+            Tus zonas de pastoreo y su estado de ocupación
+          </p>
         </div>
         <button type="button" className="btn" onClick={() => setModal({ open: true, mode: 'crear' })}>
           <Plus size={16} aria-hidden="true" />
@@ -123,7 +160,7 @@ export function PotrerosPage() {
         </div>
       )}
 
-      {loading ? (
+      {loading || !finca ? (
         <LoadingState />
       ) : potreros.length === 0 ? (
         <EmptyState onCrear={() => setModal({ open: true, mode: 'crear' })} />
@@ -161,6 +198,7 @@ export function PotrerosPage() {
           {tab === 'mapa' ? (
             <PotreroMapa
               potreros={potreros}
+              cols={finca.capacidad}
               busyId={busyId}
               onPersist={persistGrid}
               onToggle={toggleOcupado}
@@ -247,8 +285,9 @@ export function PotrerosPage() {
         </>
       )}
 
-      {modal.open && (
+      {modal.open && finca && (
         <PotreroModal
+          fincaId={finca.id}
           target={modal.mode === 'editar' ? modal.target : null}
           onClose={() => setModal({ open: false })}
           onSaved={(p) => { upsert(p); setModal({ open: false }); }}
@@ -260,10 +299,12 @@ export function PotrerosPage() {
 }
 
 function PotreroModal({
+  fincaId,
   target,
   onClose,
   onSaved,
 }: {
+  fincaId: string;
   target: Potrero | null;
   onClose: () => void;
   onSaved: (p: Potrero) => void;
@@ -314,14 +355,16 @@ function PotreroModal({
         const v = value.trim();
         if (k && v) metadatos[k] = v;
       }
-      const body = {
-        nombre: nombre.trim(),
-        notas: notas.trim() || null,
-        metadatos: Object.keys(metadatos).length > 0 ? metadatos : null,
-      };
+      const metaPayload = Object.keys(metadatos).length > 0 ? metadatos : null;
       const d = target
-        ? await api<{ potrero: Potrero }>(`/api/potreros/${target.id}`, { method: 'PUT', body })
-        : await api<{ potrero: Potrero }>('/api/potreros', { method: 'POST', body });
+        ? await api<{ potrero: Potrero }>(`/api/potreros/${target.id}`, {
+            method: 'PUT',
+            body: { nombre: nombre.trim(), notas: notas.trim() || null, metadatos: metaPayload },
+          })
+        : await api<{ potrero: Potrero }>('/api/potreros', {
+            method: 'POST',
+            body: { fincaId, nombre: nombre.trim(), notas: notas.trim() || null, metadatos: metaPayload },
+          });
       onSaved(d.potrero);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error');

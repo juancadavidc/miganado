@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { Beef, Sprout, Pencil, Trash2, Move, MapPinOff, Plus } from 'lucide-react';
+import {
+  Beef, Sprout, Pencil, Trash2, Move, MapPinOff, Plus,
+  ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
+} from 'lucide-react';
 import type { Potrero } from '../types';
 import { diasDesde, fmtDias } from '../lib/format';
 
-// Debe coincidir con GRID_COLS del backend (backend/src/routes/potreros.ts).
-const GRID_COLS = 16;
 const MIN_ROWS = 6;
+// En modo edición las celdas pasan a tamaño fijo (más grandes que el ajuste
+// responsive) y el mapa se vuelve desplazable dentro de su ventana.
+const EDIT_CELL = 64;
+const PAN_STEP = EDIT_CELL * 2;
 
 export type GridCoords = {
   gridX?: number | null;
@@ -18,6 +23,7 @@ type Rect = { x: number; y: number; w: number; h: number };
 
 type Props = {
   potreros: Potrero[];
+  cols: number;
   busyId: string | null;
   onPersist: (id: string, coords: GridCoords) => void | Promise<void>;
   onToggle: (p: Potrero) => void;
@@ -47,8 +53,9 @@ function rectsOverlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
-export function PotreroMapa({ potreros, busyId, onPersist, onToggle, onEdit, onDelete }: Props) {
+export function PotreroMapa({ potreros, cols, busyId, onPersist, onToggle, onEdit, onDelete }: Props) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const [cellPx, setCellPx] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -57,14 +64,20 @@ export function PotreroMapa({ potreros, busyId, onPersist, onToggle, onEdit, onD
   const dragRef = useRef<DragState | null>(null);
 
   useEffect(() => {
+    if (editMode) {
+      // Celdas fijas: el grid crece a su contenido y se recorre con scroll/flechas.
+      setCellPx(EDIT_CELL);
+      viewportRef.current?.scrollTo({ left: 0, top: 0 });
+      return;
+    }
     const el = canvasRef.current;
     if (!el) return;
-    const measure = () => setCellPx(el.clientWidth / GRID_COLS);
+    const measure = () => setCellPx(el.clientWidth / cols);
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [editMode]);
 
   const placed = potreros.filter((p) => p.gridX !== null && p.gridY !== null);
   const unplaced = potreros.filter((p) => p.gridX === null || p.gridY === null);
@@ -90,7 +103,7 @@ export function PotreroMapa({ potreros, busyId, onPersist, onToggle, onEdit, onD
   function firstFreeCell(w: number, h: number): { x: number; y: number } {
     const others = placed.map((p) => ({ x: p.gridX!, y: p.gridY!, w: p.gridW, h: p.gridH }));
     for (let y = 0; y < 200; y++) {
-      for (let x = 0; x <= GRID_COLS - w; x++) {
+      for (let x = 0; x <= cols - w; x++) {
         const cand = { x, y, w, h };
         if (!others.some((o) => rectsOverlap(cand, o))) return { x, y };
       }
@@ -104,7 +117,7 @@ export function PotreroMapa({ potreros, busyId, onPersist, onToggle, onEdit, onD
     if (!el) return;
     e.preventDefault();
     e.stopPropagation();
-    const cell = el.clientWidth / GRID_COLS;
+    const cell = cellPx;
     dragRef.current = {
       id: p.id,
       mode,
@@ -130,10 +143,10 @@ export function PotreroMapa({ potreros, busyId, onPersist, onToggle, onEdit, onD
     let w = d.ow;
     let h = d.oh;
     if (d.mode === 'move') {
-      x = clamp(d.ox + dx, 0, GRID_COLS - d.ow);
+      x = clamp(d.ox + dx, 0, cols - d.ow);
       y = Math.max(0, d.oy + dy);
     } else {
-      w = clamp(d.ow + dx, 1, GRID_COLS - d.ox);
+      w = clamp(d.ow + dx, 1, cols - d.ox);
       h = Math.max(1, d.oh + dy);
     }
     const valid = !overlapsOthers(d.id, { x, y, w, h });
@@ -150,6 +163,10 @@ export function PotreroMapa({ potreros, busyId, onPersist, onToggle, onEdit, onD
     if (pv.valid && changed) {
       onPersist(d.id, { gridX: pv.x, gridY: pv.y, gridW: pv.w, gridH: pv.h });
     }
+  }
+
+  function pan(dx: number, dy: number) {
+    viewportRef.current?.scrollBy({ left: dx, top: dy, behavior: 'smooth' });
   }
 
   function colocar(p: Potrero) {
@@ -191,11 +208,15 @@ export function PotreroMapa({ potreros, busyId, onPersist, onToggle, onEdit, onD
         </span>
       </div>
 
+      <div className="mapa-stage">
+      <div ref={viewportRef} className={`mapa-viewport${editMode ? ' is-editing' : ''}`}>
       <div
         ref={canvasRef}
         className={`mapa-canvas${editMode ? ' is-editing' : ''}`}
         style={{
-          gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)`,
+          gridTemplateColumns: editMode
+            ? `repeat(${cols}, ${cellPx}px)`
+            : `repeat(${cols}, 1fr)`,
           gridTemplateRows: `repeat(${rows}, ${cellPx}px)`,
           backgroundSize: `${cellPx}px ${cellPx}px`,
         }}
@@ -253,6 +274,24 @@ export function PotreroMapa({ potreros, busyId, onPersist, onToggle, onEdit, onD
             </div>
           );
         })}
+      </div>
+      </div>
+        {editMode && (
+          <div className="mapa-pad" role="group" aria-label="Mover el mapa">
+            <button type="button" className="mapa-pad-btn up" onClick={() => pan(0, -PAN_STEP)} aria-label="Mover arriba">
+              <ChevronUp size={18} aria-hidden="true" />
+            </button>
+            <button type="button" className="mapa-pad-btn left" onClick={() => pan(-PAN_STEP, 0)} aria-label="Mover a la izquierda">
+              <ChevronLeft size={18} aria-hidden="true" />
+            </button>
+            <button type="button" className="mapa-pad-btn right" onClick={() => pan(PAN_STEP, 0)} aria-label="Mover a la derecha">
+              <ChevronRight size={18} aria-hidden="true" />
+            </button>
+            <button type="button" className="mapa-pad-btn down" onClick={() => pan(0, PAN_STEP)} aria-label="Mover abajo">
+              <ChevronDown size={18} aria-hidden="true" />
+            </button>
+          </div>
+        )}
       </div>
 
       {selected && !editMode && (

@@ -31,12 +31,29 @@ model User {
 
   lotes    Lote[]
   potreros Potrero[]
+  fincas   Finca[]
+}
+
+model Finca {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nombre      String
+  capacidad   Int       @default(16) // ancho del mapa en columnas: 16 | 32 | 64
+  propiedades Json?
+  potreros    Potrero[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
 }
 
 model Potrero {
   id           String    @id @default(cuid())
   userId       String
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fincaId      String
+  finca        Finca     @relation(fields: [fincaId], references: [id], onDelete: Cascade)
   nombre       String
   ocupado      Boolean   @default(false)
   ocupadoDesde DateTime?
@@ -51,6 +68,7 @@ model Potrero {
   updatedAt    DateTime  @updatedAt
 
   @@index([userId])
+  @@index([fincaId])
 }
 
 model Lote {

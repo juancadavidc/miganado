@@ -7,8 +7,10 @@ import { requireAuth } from '../middleware/auth.js';
 const router = Router();
 router.use(requireAuth);
 
-// Ancho del lienzo del mapa en celdas. Las filas crecen libremente (scroll).
-export const GRID_COLS = 16;
+// El ancho del mapa lo define la capacidad de cada finca (16 | 32 | 64). Las filas
+// crecen libremente (scroll). Este tope solo sirve de cota superior para validar la
+// entrada; el límite real se contrasta contra la capacidad de la finca del potrero.
+const MAX_CAPACIDAD = 64;
 
 type Rect = { x: number; y: number; w: number; h: number };
 
@@ -19,6 +21,7 @@ function rectsOverlap(a: Rect, b: Rect): boolean {
 const metadatosSchema = z.record(z.string(), z.string());
 
 const createSchema = z.object({
+  fincaId: z.string().min(1, 'La finca es obligatoria'),
   nombre: z.string().trim().min(1, 'El nombre es obligatorio'),
   notas: z.string().optional().nullable(),
   metadatos: metadatosSchema.optional().nullable(),
@@ -31,8 +34,12 @@ const updateSchema = z.object({
   ocupado: z.boolean().optional(),
   gridX: z.coerce.number().int().min(0).nullable().optional(),
   gridY: z.coerce.number().int().min(0).nullable().optional(),
-  gridW: z.coerce.number().int().min(1).max(GRID_COLS).optional(),
+  gridW: z.coerce.number().int().min(1).max(MAX_CAPACIDAD).optional(),
   gridH: z.coerce.number().int().min(1).optional(),
+});
+
+const listQuerySchema = z.object({
+  fincaId: z.string().min(1, 'La finca es obligatoria'),
 });
 
 // Limpia el mapa de metadatos: descarta pares con clave o valor vacíos. Devuelve
@@ -52,9 +59,20 @@ function normalizeMetadatos(
   return Object.keys(limpio).length > 0 ? limpio : Prisma.DbNull;
 }
 
+// Verifica que la finca exista y pertenezca al usuario. Devuelve la finca o null.
+async function fincaDelUsuario(fincaId: string, userId: string) {
+  return prisma.finca.findFirst({ where: { id: fincaId, userId } });
+}
+
 router.get('/', async (req, res) => {
+  const parsed = listQuerySchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const finca = await fincaDelUsuario(parsed.data.fincaId, req.user!.userId);
+  if (!finca) return res.status(404).json({ error: 'Finca no encontrada' });
+
   const potreros = await prisma.potrero.findMany({
-    where: { userId: req.user!.userId },
+    where: { fincaId: finca.id },
     orderBy: { createdAt: 'asc' },
   });
   res.json({ potreros });
@@ -64,9 +82,13 @@ router.post('/', async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
+  const finca = await fincaDelUsuario(parsed.data.fincaId, req.user!.userId);
+  if (!finca) return res.status(404).json({ error: 'Finca no encontrada' });
+
   const potrero = await prisma.potrero.create({
     data: {
       userId: req.user!.userId,
+      fincaId: finca.id,
       nombre: parsed.data.nombre,
       notas: parsed.data.notas ?? null,
       metadatos: normalizeMetadatos(parsed.data.metadatos),
@@ -83,6 +105,7 @@ router.put('/:id', async (req, res) => {
 
   const existing = await prisma.potrero.findFirst({
     where: { id: req.params.id, userId: req.user!.userId },
+    include: { finca: true },
   });
   if (!existing) return res.status(404).json({ error: 'Potrero no encontrado' });
 
@@ -118,14 +141,17 @@ router.put('/:id', async (req, res) => {
     const w = d.gridW !== undefined ? d.gridW : existing.gridW;
     const h = d.gridH !== undefined ? d.gridH : existing.gridH;
 
+    // El ancho del mapa lo fija la capacidad de la finca. El alto (y) crece libre.
+    const cols = existing.finca.capacidad;
+
     // Solo validamos ubicación cuando el potrero queda colocado (x e y no nulos).
     if (x !== null && y !== null) {
-      if (x + w > GRID_COLS) {
-        return res.status(400).json({ error: `El potrero se sale del mapa (máx ${GRID_COLS} columnas)` });
+      if (x + w > cols) {
+        return res.status(400).json({ error: `El potrero se sale del mapa (máx ${cols} columnas)` });
       }
       const otros = await prisma.potrero.findMany({
         where: {
-          userId: req.user!.userId,
+          fincaId: existing.fincaId,
           id: { not: req.params.id },
           gridX: { not: null },
           gridY: { not: null },

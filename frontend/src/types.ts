@@ -31,8 +31,19 @@ export type User = {
   createdAt?: string;
 };
 
+export type Finca = {
+  id: string;
+  nombre: string;
+  capacidad: number; // 16 | 32 | 64 — ancho del mapa en columnas
+  propiedades: Record<string, string> | null;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { potreros: number };
+};
+
 export type Potrero = {
   id: string;
+  fincaId: string;
   nombre: string;
   ocupado: boolean;
   ocupadoDesde: string | null;

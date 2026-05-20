@@ -7,7 +7,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { LoteFormPage } from './pages/LoteFormPage';
 import { LoteImportPage } from './pages/LoteImportPage';
 import { LoteDetallePage } from './pages/LoteDetallePage';
-import { PotrerosPage } from './pages/PotrerosPage';
+import { FincasPage } from './pages/FincasPage';
+import { FincaDetallePage } from './pages/FincaDetallePage';
 
 function Protected({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -57,13 +58,22 @@ export default function App() {
           }
         />
         <Route
-          path="/potreros"
+          path="/fincas"
           element={
             <Protected>
-              <PotrerosPage />
+              <FincasPage />
             </Protected>
           }
         />
+        <Route
+          path="/fincas/:id"
+          element={
+            <Protected>
+              <FincaDetallePage />
+            </Protected>
+          }
+        />
+        <Route path="/potreros" element={<Navigate to="/fincas" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

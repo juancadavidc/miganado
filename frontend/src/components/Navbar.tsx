@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, ChevronDown, Menu, X, Beef, Fence } from 'lucide-react';
+import { LogOut, ChevronDown, Menu, X, Beef, LandPlot } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { BrandMark } from './BrandMark';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Lotes', icon: Beef, end: true },
-  { to: '/potreros', label: 'Potreros', icon: Fence, end: false },
+  { to: '/fincas', label: 'Fincas', icon: LandPlot, end: false },
 ];
 
 export function Navbar() {

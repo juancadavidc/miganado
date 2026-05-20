@@ -853,6 +853,46 @@ label {
   box-shadow: var(--shadow-xs);
 }
 
+/* Fincas: selector de capacidad (segmented control) y tarjeta clickeable */
+.seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.seg-btn {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.seg-btn:hover { background: var(--color-surface-hover); color: var(--color-text); }
+.seg-btn.active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-xs);
+}
+.finca-card { cursor: pointer; }
+.finca-card:hover { border-color: var(--color-border-strong); }
+.finca-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-sm);
+}
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: var(--space-2);
+}
+
 /* Mapa de potreros */
 .mapa-toolbar {
   display: flex;
@@ -862,6 +902,15 @@ label {
   flex-wrap: wrap;
 }
 .mapa-hint { font-size: var(--text-xs); }
+
+.mapa-stage { position: relative; }
+.mapa-viewport.is-editing {
+  max-height: min(70vh, 560px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-lg);
+  overscroll-behavior: contain;
+}
 
 .mapa-canvas {
   position: relative;
@@ -876,6 +925,7 @@ label {
     linear-gradient(to bottom, var(--color-border) 1px, transparent 1px);
   overflow: hidden;
 }
+.mapa-canvas.is-editing { width: max-content; min-width: 100%; }
 .mapa-empty {
   position: absolute;
   inset: 0;
@@ -954,6 +1004,41 @@ label {
   border-bottom-right-radius: var(--radius-md);
 }
 .mapa-handle:hover { opacity: 0.9; }
+
+/* D-pad para recorrer el mapa en modo edición */
+.mapa-pad {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  display: grid;
+  grid-template-columns: repeat(3, 32px);
+  grid-template-rows: repeat(3, 32px);
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-lg);
+  z-index: 5;
+}
+.mapa-pad-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  padding: 0;
+}
+.mapa-pad-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.mapa-pad-btn:active { background: var(--color-surface-hover); }
+.mapa-pad-btn.up { grid-area: 1 / 2; }
+.mapa-pad-btn.left { grid-area: 2 / 1; }
+.mapa-pad-btn.right { grid-area: 2 / 3; }
+.mapa-pad-btn.down { grid-area: 3 / 2; }
 
 .mapa-detail {
   margin-top: var(--space-3);
