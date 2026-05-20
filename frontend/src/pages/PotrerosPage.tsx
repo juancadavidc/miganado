@@ -1,11 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import {
-  Plus, Fence, Sprout, Beef, Clock, Pencil, Trash2, AlertCircle, X,
+  Plus, Fence, Sprout, Beef, Clock, Pencil, Trash2, AlertCircle, X, Map, LayoutList,
 } from 'lucide-react';
 import { api, ApiError } from '../api/client';
 import type { Potrero } from '../types';
 import { diasDesde, fmtDias, fmtDate } from '../lib/format';
 import { useConfirm } from '../components/ConfirmDialog';
+import { PotreroMapa, type GridCoords } from '../components/PotreroMapa';
 
 type ModalState =
   | { open: false }
@@ -18,6 +19,7 @@ export function PotrerosPage() {
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalState>({ open: false });
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [tab, setTab] = useState<'mapa' | 'lista'>('mapa');
   const { ask, dialog } = useConfirm();
 
   useEffect(() => {
@@ -49,6 +51,21 @@ export function PotrerosPage() {
       setError(err instanceof ApiError ? err.message : 'Error');
     } finally {
       setBusyId(null);
+    }
+  }
+
+  // Guarda la posición/tamaño en el mapa de forma optimista; revierte si el
+  // server rechaza (solapamiento o fuera de bounds en una carrera).
+  async function persistGrid(id: string, coords: GridCoords) {
+    const original = potreros.find((p) => p.id === id);
+    if (!original) return;
+    upsert({ ...original, ...coords });
+    try {
+      const d = await api<{ potrero: Potrero }>(`/api/potreros/${id}`, { method: 'PUT', body: coords });
+      upsert(d.potrero);
+    } catch (err) {
+      upsert(original);
+      setError(err instanceof ApiError ? err.message : 'Error');
     }
   }
 
@@ -106,6 +123,39 @@ export function PotrerosPage() {
             <KpiCard icon={<Sprout size={16} />} label="En descanso" value={String(libres)} />
           </section>
 
+          <div className="tabs" role="tablist" aria-label="Vista de potreros">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'mapa'}
+              className={`tab${tab === 'mapa' ? ' active' : ''}`}
+              onClick={() => setTab('mapa')}
+            >
+              <Map size={16} aria-hidden="true" />
+              Mapa
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'lista'}
+              className={`tab${tab === 'lista' ? ' active' : ''}`}
+              onClick={() => setTab('lista')}
+            >
+              <LayoutList size={16} aria-hidden="true" />
+              Lista
+            </button>
+          </div>
+
+          {tab === 'mapa' ? (
+            <PotreroMapa
+              potreros={potreros}
+              busyId={busyId}
+              onPersist={persistGrid}
+              onToggle={toggleOcupado}
+              onEdit={(p) => setModal({ open: true, mode: 'editar', target: p })}
+              onDelete={eliminar}
+            />
+          ) : (
           <section className="potrero-grid">
             {potreros.map((p) => {
               const dias = diasDesde(p.ocupado ? p.ocupadoDesde : p.vacioDesde);
@@ -170,6 +220,7 @@ export function PotrerosPage() {
               );
             })}
           </section>
+          )}
         </>
       )}
 

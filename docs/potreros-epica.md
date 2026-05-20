@@ -4,8 +4,8 @@ Mapa visual de los potreros del rancho: el dueño dibuja su zona de pastoreo,
 ve qué potrero está ocupado o en descanso, y rota el ganado entre potreros para
 que el pasto se recupere.
 
-> Estado: **Fase 1 entregada**. Las fases 2–4 son la visión completa que da
-> contexto a las decisiones de la Fase 1; aún no están implementadas.
+> Estado: **Fases 1 y 2 entregadas**. Las fases 3–4 son la visión completa que
+> da contexto a las decisiones tomadas; aún no están implementadas.
 
 ---
 
@@ -68,33 +68,54 @@ model Potrero {
 
 ---
 
-## Fase 2 — Editor visual de cuadrícula
+## Fase 2 — Editor visual de cuadrícula (ENTREGADA)
 
-El corazón de la idea original: el dueño **dibuja** su rancho.
+El corazón de la idea original: el dueño **dibuja** su rancho. La sección Potreros
+ahora tiene dos pestañas: **Mapa** (este editor) y **Lista** (las tarjetas de la
+Fase 1).
 
-- El lienzo es una **cuadrícula de celdas**. Cada potrero ocupa una o varias
-  celdas contiguas (un rectángulo).
-- En **modo edición**, cada potrero muestra un **`+` en cada lado**. Al tocarlo,
-  el potrero **se agranda una celda** hacia ese lado (las celdas se "unen" para
-  formar un potrero más grande). Un `−` permite encogerlo.
-- Se pueden crear **más potreros** en celdas libres y así el dueño va armando su
-  zona. Los potreros **no se solapan**.
-- El estado (ocupado / en descanso + días) se pinta sobre cada potrero en el mapa
-  (semáforo de color: ocupado vs. descansando).
+Lo que quedó funcionando:
 
-### Cambios de datos previstos
+- El lienzo es una **cuadrícula** de `GRID_COLS = 16` columnas; las filas crecen
+  hacia abajo (scroll). El tamaño de celda es responsivo (ancho ÷ 16), así escala
+  entre celular y escritorio.
+- Cada potrero es un rectángulo posicionado en celdas. **Modo "Editar
+  disposición"**: se **arrastra para mover** y se **redimensiona desde la esquina**
+  (◢), ajustando a la celda (snap-to-grid). Apagado el modo, el mapa es de solo
+  lectura y tocar un potrero abre sus acciones.
+- **No se solapan**: durante el arrastre el potrero se pinta en rojo si chocaría;
+  al soltar, si es inválido, vuelve a su lugar. El backend revalida (defensa en
+  profundidad) y la UI revierte si rechaza.
+- **Bandeja "Sin ubicar"**: los potreros sin posición (los de la Fase 1) aparecen
+  como chips; el botón los coloca en la primera celda libre. Desde el detalle se
+  puede "Quitar del mapa" (vuelve a la bandeja).
+- El estado (ocupado / en descanso + días) se pinta sobre cada ficha (verde =
+  descanso, ámbar = ocupado).
 
-Agregar coordenadas de grilla al modelo (todas nullable hasta migrar los
-existentes):
+### Decisión: snap-to-grid en celdas (no píxeles)
+
+Aunque la interacción es arrastrar/redimensionar libre, las posiciones se guardan
+en **unidades de celda**, no en píxeles. Motivo: escalan responsivamente entre
+pantallas y hacen trivial la detección de solapamientos.
+
+### Datos (implementado)
 
 ```prisma
-gridX  Int?   // columna de la esquina superior izquierda
-gridY  Int?   // fila
-gridW  Int?   // ancho en celdas
-gridH  Int?   // alto en celdas
+gridX Int?            // columna (esquina sup-izq); null = sin ubicar
+gridY Int?            // fila; null = sin ubicar
+gridW Int @default(1) // ancho en celdas
+gridH Int @default(1) // alto en celdas
 ```
 
-Validación en backend: rectángulos sin solapamiento dentro del rancho del usuario.
+`PUT /api/potreros/:id` acepta estos campos y valida en el backend: dentro de
+bounds (`gridX + gridW <= GRID_COLS`) y sin solaparse con otros potreros del
+usuario. `GRID_COLS` vive en `backend/src/routes/potreros.ts` y se replica en
+`frontend/src/components/PotreroMapa.tsx`.
+
+### Pendiente / mejoras futuras de esta fase
+
+- Arrastrar el chip de la bandeja directo al lienzo (hoy se coloca con botón).
+- Manejo por teclado de las fichas (mover con flechas) para accesibilidad.
 
 ---
 

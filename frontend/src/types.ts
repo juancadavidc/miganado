@@ -38,6 +38,10 @@ export type Potrero = {
   ocupadoDesde: string | null;
   vacioDesde: string | null;
   notas: string | null;
+  gridX: number | null;
+  gridY: number | null;
+  gridW: number;
+  gridH: number;
   createdAt: string;
   updatedAt: string;
 };
