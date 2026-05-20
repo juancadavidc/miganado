@@ -36,3 +36,21 @@ Coolify local y polea el estado hasta `finished`/`failed` (timeout 5 min).
 Si despues del redeploy los assets nuevos siguen sirviendose stale desde el dominio
 publico, casi seguro es Cloudflare cacheando una respuesta vieja — el origen ya esta
 bien. Purga manual en CF dashboard o esperar ~4h al TTL.
+
+## Usuario de prueba local → `scripts/seed-usuario-prueba.sh`
+
+Para entrar a la app cuando se levanta en local hay un usuario de prueba
+deterministico. Crealo (o asegurate de que exista) con:
+
+```bash
+./scripts/seed-usuario-prueba.sh
+```
+
+- Credenciales fijas: documento `1234`, contraseña `prueba1234`.
+- Es idempotente (UPSERT): correrlo varias veces siempre deja el mismo usuario con
+  la misma contraseña.
+- Apunta al **postgres local** de `docker-compose.yml` (puerto host 5433), NUNCA a
+  produccion. No usa el `DATABASE_URL` de `backend/.env` a proposito, porque ese
+  puede apuntar a la base de produccion.
+- Solo necesita `psql` y que el postgres local este arriba (`docker compose up -d`).
+  No depende de node.
