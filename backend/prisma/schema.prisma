@@ -32,6 +32,7 @@ model User {
   lotes    Lote[]
   potreros Potrero[]
   fincas   Finca[]
+  grupos   Grupo[]
 }
 
 model Finca {
@@ -67,6 +68,8 @@ model Potrero {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  grupos       Grupo[]
+
   @@index([userId])
   @@index([fincaId])
 }
@@ -97,8 +100,35 @@ model Lote {
   gastos      Gasto[]
   fotos       Foto[]
   anotaciones Anotacion[]
+  grupos      Grupo[]
 
   @@index([userId, fecha])
+}
+
+// Un Grupo es una "punta" de ganado que se maneja junta en el campo: vive en un
+// potrero y se rota entre potreros. Es un concepto OPERATIVO, distinto del Lote
+// (que es comercial/contable). Al registrar un lote se crea un grupo con sus
+// cabezas; luego el ganadero lo asigna a un potrero, lo divide por sexo/peso o
+// lo fusiona con otro. potreroId nulo = ganado sin ubicar todavía.
+model Grupo {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nombre         String
+  sexo           Sexo
+  cantidad       Int       @default(1)
+  potreroId      String?
+  potrero        Potrero?  @relation(fields: [potreroId], references: [id], onDelete: SetNull)
+  ingresoPotrero DateTime? // cuándo entró al potrero actual (para los días de pastoreo)
+  loteId         String?
+  lote           Lote?     @relation(fields: [loteId], references: [id], onDelete: SetNull)
+  notas          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([potreroId])
+  @@index([loteId])
 }
 
 model Animal {

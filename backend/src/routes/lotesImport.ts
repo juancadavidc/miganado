@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { env } from '../lib/env.js';
+import { nombreGrupoDeLote } from '../lib/grupo.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -159,9 +160,13 @@ router.post('/bulk', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const userId = req.user!.userId;
-  const created = await prisma.$transaction(
-    parsed.data.lotes.map((d) =>
-      prisma.lote.create({
+  // Cada lote importado crea su grupo de ganado (sin ubicar todavía) para que el
+  // ganadero pueda asignarlo luego a un potrero. Transacción interactiva porque el
+  // grupo necesita el id del lote recién creado.
+  const created = await prisma.$transaction(async (tx) => {
+    const lotes = [];
+    for (const d of parsed.data.lotes) {
+      const lote = await tx.lote.create({
         data: {
           userId,
           fecha: new Date(d.fecha),
@@ -180,9 +185,20 @@ router.post('/bulk', async (req, res) => {
           criasHembra: d.criasHembra,
           notas: d.notas ?? null,
         },
-      }),
-    ),
-  );
+      });
+      await tx.grupo.create({
+        data: {
+          userId,
+          nombre: nombreGrupoDeLote(lote),
+          sexo: lote.sexo,
+          cantidad: lote.cantidad,
+          loteId: lote.id,
+        },
+      });
+      lotes.push(lote);
+    }
+    return lotes;
+  });
   res.status(201).json({ lotes: created });
 });
 

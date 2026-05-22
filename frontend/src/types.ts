@@ -68,6 +68,26 @@ export type Anotacion = {
   updatedAt: string;
 };
 
+export type Grupo = {
+  id: string;
+  nombre: string;
+  sexo: Sexo;
+  cantidad: number;
+  potreroId: string | null;
+  potrero: {
+    id: string;
+    nombre: string;
+    fincaId: string;
+    finca: { id: string; nombre: string };
+  } | null;
+  ingresoPotrero: string | null;
+  loteId: string | null;
+  lote: { id: string; loteNumero: string | null; numeroFeria: string | null } | null;
+  notas: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Lote = {
   id: string;
   fecha: string;
@@ -122,9 +142,26 @@ export type Foto = {
   url: string;
 };
 
+export type GrupoDeLote = {
+  id: string;
+  nombre: string;
+  sexo: Sexo;
+  cantidad: number;
+  potreroId: string | null;
+  potrero: {
+    id: string;
+    nombre: string;
+    fincaId: string;
+    finca: { id: string; nombre: string };
+  } | null;
+  ingresoPotrero: string | null;
+  notas: string | null;
+};
+
 export type LoteDetalle = Lote & {
   animales: Animal[];
   gastos: Gasto[];
   fotos: Foto[];
   anotaciones: Anotacion[];
+  grupos: GrupoDeLote[];
 };

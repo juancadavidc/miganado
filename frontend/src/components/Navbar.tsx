@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, ChevronDown, Menu, X, Beef, LandPlot } from 'lucide-react';
+import { LogOut, ChevronDown, Menu, X, Beef, LandPlot, Layers } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { BrandMark } from './BrandMark';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Lotes', icon: Beef, end: true },
+  { to: '/ganado', label: 'Ganado', icon: Layers, end: false },
   { to: '/fincas', label: 'Fincas', icon: LandPlot, end: false },
 ];
 

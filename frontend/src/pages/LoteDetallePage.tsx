@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Trash2, Plus, X, Upload, Camera, ImageOff,
-  AlertCircle, Receipt, ListOrdered, Calendar, MessageSquare,
+  AlertCircle, Receipt, ListOrdered, Calendar, MessageSquare, Layers, MapPin, MapPinOff,
 } from 'lucide-react';
 import { api, ApiError } from '../api/client';
 import type { Animal, CriaSexo, Foto, Gasto, LoteDetalle, Sexo } from '../types';
@@ -121,6 +121,7 @@ export function LoteDetallePage() {
         </div>
       </section>
 
+      <SeccionGanado lote={lote} />
       <SeccionFotos lote={lote} onChange={cargar} ask={ask} />
       <SeccionAnotacionesLote lote={lote} onChange={cargar} />
       <SeccionAnimales lote={lote} onChange={cargar} ask={ask} />
@@ -132,6 +133,58 @@ export function LoteDetallePage() {
 }
 
 type Asker = ReturnType<typeof useConfirm>['ask'];
+
+// Muestra el/los grupos de ganado de este lote y dónde están ubicados. El grupo se
+// crea automáticamente al registrar el lote; la gestión (mover, dividir, fusionar)
+// se hace en la sección Ganado.
+function SeccionGanado({ lote }: { lote: LoteDetalle }) {
+  const grupos = lote.grupos ?? [];
+  const cabezas = grupos.reduce((s, g) => s + g.cantidad, 0);
+  return (
+    <section className="card" style={{ marginBottom: 'var(--space-4)' }}>
+      <div className="row-between" style={{ marginBottom: 'var(--space-3)' }}>
+        <h2 className="row" style={{ gap: 'var(--space-2)' }}>
+          <Layers size={18} aria-hidden="true" />
+          Grupo de ganado
+          {cabezas > 0 && <span className="muted tabnum">({cabezas} cab.)</span>}
+        </h2>
+        <Link to="/ganado" className="btn-secondary btn-sm">Gestionar ganado</Link>
+      </div>
+      {grupos.length === 0 ? (
+        <p className="muted">Este lote no tiene un grupo de ganado asociado.</p>
+      ) : (
+        <div className="potrero-grid">
+          {grupos.map((g) => (
+            <article key={g.id} className={`potrero-card${g.potreroId ? ' is-ocupado' : ''}`}>
+              <div className="potrero-card-head">
+                <span className="potrero-icon" aria-hidden="true"><Layers size={18} /></span>
+                <SexoBadge sexo={g.sexo} />
+              </div>
+              <h3 className="potrero-nombre">{g.nombre}</h3>
+              <div className="potrero-stat">
+                <strong>{g.cantidad}</strong>&nbsp;{g.cantidad === 1 ? 'cabeza' : 'cabezas'}
+              </div>
+              {g.potrero ? (
+                <div className="potrero-stat">
+                  <MapPin size={14} aria-hidden="true" />
+                  <span>
+                    <Link to={`/fincas/${g.potrero.fincaId}`}>{g.potrero.finca.nombre}</Link>
+                    {' · '}<strong>{g.potrero.nombre}</strong>
+                  </span>
+                </div>
+              ) : (
+                <div className="potrero-stat muted">
+                  <MapPinOff size={14} aria-hidden="true" />
+                  <span>Sin ubicar</span>
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
 
 function SeccionAnotacionesLote({ lote, onChange }: { lote: LoteDetalle; onChange: () => void }) {
   return (

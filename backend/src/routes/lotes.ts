@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { withUrl } from '../lib/foto.js';
+import { nombreGrupoDeLote } from '../lib/grupo.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -55,6 +56,12 @@ router.get('/:id', async (req, res) => {
       },
       fotos: { where: { animalId: null }, orderBy: { createdAt: 'desc' } },
       anotaciones: { orderBy: { createdAt: 'desc' } },
+      grupos: {
+        orderBy: { createdAt: 'asc' },
+        include: {
+          potrero: { select: { id: true, nombre: true, fincaId: true, finca: { select: { id: true, nombre: true } } } },
+        },
+      },
     },
   });
   if (!lote) return res.status(404).json({ error: 'Lote no encontrado' });
@@ -71,25 +78,40 @@ router.post('/', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const data = parsed.data;
-  const lote = await prisma.lote.create({
-    data: {
-      userId: req.user!.userId,
-      fecha: new Date(data.fecha),
-      numeroFeria: data.numeroFeria ?? null,
-      loteNumero: data.loteNumero ?? null,
-      sexo: data.sexo,
-      cantidad: data.cantidad,
-      pesoTotal: data.pesoTotal,
-      pesoPromedio: data.pesoPromedio ?? null,
-      valorFinal: data.valorFinal,
-      valorTotal: data.valorTotal,
-      deduccion: data.deduccion,
-      referencia: data.referencia ?? null,
-      valorAPagar: data.valorAPagar,
-      criasMacho: data.criasMacho,
-      criasHembra: data.criasHembra,
-      notas: data.notas ?? null,
-    },
+  const userId = req.user!.userId;
+  // Junto con el lote se crea su grupo de ganado (sin ubicar) para poder asignarlo
+  // luego a un potrero, igual que en la importación por imagen.
+  const lote = await prisma.$transaction(async (tx) => {
+    const creado = await tx.lote.create({
+      data: {
+        userId,
+        fecha: new Date(data.fecha),
+        numeroFeria: data.numeroFeria ?? null,
+        loteNumero: data.loteNumero ?? null,
+        sexo: data.sexo,
+        cantidad: data.cantidad,
+        pesoTotal: data.pesoTotal,
+        pesoPromedio: data.pesoPromedio ?? null,
+        valorFinal: data.valorFinal,
+        valorTotal: data.valorTotal,
+        deduccion: data.deduccion,
+        referencia: data.referencia ?? null,
+        valorAPagar: data.valorAPagar,
+        criasMacho: data.criasMacho,
+        criasHembra: data.criasHembra,
+        notas: data.notas ?? null,
+      },
+    });
+    await tx.grupo.create({
+      data: {
+        userId,
+        nombre: nombreGrupoDeLote(creado),
+        sexo: creado.sexo,
+        cantidad: creado.cantidad,
+        loteId: creado.id,
+      },
+    });
+    return creado;
   });
   res.status(201).json({ lote });
 });

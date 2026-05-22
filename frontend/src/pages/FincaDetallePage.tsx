@@ -1,10 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
-  Plus, Fence, Sprout, Beef, Clock, Pencil, Trash2, AlertCircle, X, Map, LayoutList, ArrowLeft,
+  Plus, Fence, Sprout, Beef, Clock, Pencil, Trash2, AlertCircle, X, Map, LayoutList, ArrowLeft, Layers,
 } from 'lucide-react';
 import { api, ApiError } from '../api/client';
-import type { Finca, Potrero } from '../types';
+import type { Finca, Grupo, Potrero } from '../types';
 import { diasDesde, fmtDias, fmtDate } from '../lib/format';
 import { useConfirm } from '../components/ConfirmDialog';
 import { PotreroMapa, type GridCoords } from '../components/PotreroMapa';
@@ -30,6 +30,7 @@ export function FincaDetallePage() {
   const { id } = useParams<{ id: string }>();
   const [finca, setFinca] = useState<Finca | null>(null);
   const [potreros, setPotreros] = useState<Potrero[]>([]);
+  const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -43,10 +44,12 @@ export function FincaDetallePage() {
     Promise.all([
       api<{ finca: Finca }>(`/api/fincas/${id}`),
       api<{ potreros: Potrero[] }>(`/api/potreros?fincaId=${id}`),
+      api<{ grupos: Grupo[] }>(`/api/grupos?fincaId=${id}`),
     ])
-      .then(([f, p]) => {
+      .then(([f, p, g]) => {
         setFinca(f.finca);
         setPotreros(p.potreros);
+        setGrupos(g.grupos);
       })
       .catch((err) => {
         if (err instanceof ApiError && err.status === 404) setNotFound(true);
@@ -133,6 +136,13 @@ export function FincaDetallePage() {
   const ocupados = potreros.filter((p) => p.ocupado).length;
   const libres = potreros.length - ocupados;
 
+  const gruposPorPotrero: Record<string, Grupo[]> = {};
+  for (const g of grupos) {
+    if (!g.potreroId) continue;
+    (gruposPorPotrero[g.potreroId] ??= []).push(g);
+  }
+  const totalCabezas = grupos.reduce((s, g) => s + g.cantidad, 0);
+
   return (
     <div className="container">
       <Link to="/fincas" className="btn-ghost btn-sm back-link">
@@ -147,10 +157,16 @@ export function FincaDetallePage() {
             Tus zonas de pastoreo y su estado de ocupación
           </p>
         </div>
-        <button type="button" className="btn" onClick={() => setModal({ open: true, mode: 'crear' })}>
-          <Plus size={16} aria-hidden="true" />
-          Nuevo potrero
-        </button>
+        <div className="row" style={{ gap: 'var(--space-2)' }}>
+          <Link to="/ganado" className="btn-secondary">
+            <Layers size={16} aria-hidden="true" />
+            Gestionar ganado
+          </Link>
+          <button type="button" className="btn" onClick={() => setModal({ open: true, mode: 'crear' })}>
+            <Plus size={16} aria-hidden="true" />
+            Nuevo potrero
+          </button>
+        </div>
       </header>
 
       {error && (
@@ -166,10 +182,11 @@ export function FincaDetallePage() {
         <EmptyState onCrear={() => setModal({ open: true, mode: 'crear' })} />
       ) : (
         <>
-          <section className="grid-3" style={{ marginBottom: 'var(--space-4)' }}>
+          <section className="grid-4" style={{ marginBottom: 'var(--space-4)' }}>
             <KpiCard icon={<Fence size={16} />} label="Potreros" value={String(potreros.length)} />
             <KpiCard icon={<Beef size={16} />} label="Ocupados" value={String(ocupados)} />
             <KpiCard icon={<Sprout size={16} />} label="En descanso" value={String(libres)} />
+            <KpiCard icon={<Layers size={16} />} label="Cabezas en finca" value={String(totalCabezas)} />
           </section>
 
           <div className="tabs" role="tablist" aria-label="Vista de potreros">
@@ -200,6 +217,7 @@ export function FincaDetallePage() {
               potreros={potreros}
               cols={finca.capacidad}
               busyId={busyId}
+              gruposPorPotrero={gruposPorPotrero}
               onPersist={persistGrid}
               onToggle={toggleOcupado}
               onEdit={(p) => setModal({ open: true, mode: 'editar', target: p })}
@@ -209,6 +227,8 @@ export function FincaDetallePage() {
           <section className="potrero-grid">
             {potreros.map((p) => {
               const dias = diasDesde(p.ocupado ? p.ocupadoDesde : p.vacioDesde);
+              const gruposDelPotrero = gruposPorPotrero[p.id] ?? [];
+              const cabezas = gruposDelPotrero.reduce((s, g) => s + g.cantidad, 0);
               return (
                 <article key={p.id} className={`potrero-card${p.ocupado ? ' is-ocupado' : ''}`}>
                   <div className="potrero-card-head">
@@ -228,6 +248,12 @@ export function FincaDetallePage() {
                       ? <span>Con ganado hace <strong>{fmtDias(dias)}</strong></span>
                       : <span>Sin ganado hace <strong>{fmtDias(dias)}</strong></span>}
                   </div>
+                  {cabezas > 0 && (
+                    <div className="potrero-stat">
+                      <Beef size={14} aria-hidden="true" />
+                      <span><strong>{cabezas}</strong> {cabezas === 1 ? 'cabeza' : 'cabezas'} · {gruposDelPotrero.length} {gruposDelPotrero.length === 1 ? 'grupo' : 'grupos'}</span>
+                    </div>
+                  )}
                   {!p.ocupado && p.vacioDesde && (
                     <div className="potrero-sub">Libre desde {fmtDate(p.vacioDesde)}</div>
                   )}

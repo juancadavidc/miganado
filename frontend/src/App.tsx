@@ -9,6 +9,7 @@ import { LoteImportPage } from './pages/LoteImportPage';
 import { LoteDetallePage } from './pages/LoteDetallePage';
 import { FincasPage } from './pages/FincasPage';
 import { FincaDetallePage } from './pages/FincaDetallePage';
+import { GruposPage } from './pages/GruposPage';
 
 function Protected({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -54,6 +55,14 @@ export default function App() {
           element={
             <Protected>
               <LoteDetallePage />
+            </Protected>
+          }
+        />
+        <Route
+          path="/ganado"
+          element={
+            <Protected>
+              <GruposPage />
             </Protected>
           }
         />

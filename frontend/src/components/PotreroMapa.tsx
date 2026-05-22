@@ -3,7 +3,7 @@ import {
   Beef, Sprout, Pencil, Trash2, Move, MapPinOff, Plus,
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
 } from 'lucide-react';
-import type { Potrero } from '../types';
+import type { Grupo, Potrero } from '../types';
 import { diasDesde, fmtDias } from '../lib/format';
 
 const MIN_ROWS = 6;
@@ -25,11 +25,16 @@ type Props = {
   potreros: Potrero[];
   cols: number;
   busyId: string | null;
+  gruposPorPotrero?: Record<string, Grupo[]>;
   onPersist: (id: string, coords: GridCoords) => void | Promise<void>;
   onToggle: (p: Potrero) => void;
   onEdit: (p: Potrero) => void;
   onDelete: (p: Potrero) => void;
 };
+
+function cabezasDe(grupos: Grupo[] | undefined): number {
+  return (grupos ?? []).reduce((s, g) => s + g.cantidad, 0);
+}
 
 type DragState = {
   id: string;
@@ -53,7 +58,7 @@ function rectsOverlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
-export function PotreroMapa({ potreros, cols, busyId, onPersist, onToggle, onEdit, onDelete }: Props) {
+export function PotreroMapa({ potreros, cols, busyId, gruposPorPotrero, onPersist, onToggle, onEdit, onDelete }: Props) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [cellPx, setCellPx] = useState(0);
@@ -260,6 +265,9 @@ export function PotreroMapa({ potreros, cols, busyId, onPersist, onToggle, onEdi
                   {p.ocupado ? <Beef size={14} /> : <Sprout size={14} />}
                 </span>
                 <span className="mapa-tile-nombre">{p.nombre}</span>
+                {cabezasDe(gruposPorPotrero?.[p.id]) > 0 && (
+                  <span className="mapa-tile-dias">{cabezasDe(gruposPorPotrero?.[p.id])} cab.</span>
+                )}
                 <span className="mapa-tile-dias">{fmtDias(dias)}</span>
               </div>
               {editMode && (
@@ -308,6 +316,23 @@ export function PotreroMapa({ potreros, cols, busyId, onPersist, onToggle, onEdi
               {fmtDias(diasDesde(selected.ocupado ? selected.ocupadoDesde : selected.vacioDesde))}
             </span>
           </div>
+          {(() => {
+            const grupos = gruposPorPotrero?.[selected.id] ?? [];
+            if (grupos.length === 0) return null;
+            return (
+              <div className="potrero-meta" style={{ marginTop: 'var(--space-2)' }}>
+                <div className="potrero-sub" style={{ marginBottom: 'var(--space-1)' }}>
+                  <strong>{cabezasDe(grupos)}</strong> {cabezasDe(grupos) === 1 ? 'cabeza' : 'cabezas'} en {grupos.length} {grupos.length === 1 ? 'grupo' : 'grupos'}
+                </div>
+                {grupos.map((g) => (
+                  <div className="potrero-meta-item" key={g.id}>
+                    <dt>{g.nombre}</dt>
+                    <dd>{g.cantidad} cab. · {g.sexo}</dd>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
           {selected.metadatos && Object.keys(selected.metadatos).length > 0 && (
             <dl className="potrero-meta">
               {Object.entries(selected.metadatos).map(([k, v]) => (
