@@ -11,10 +11,11 @@ build/
 .DS_Store
 .vscode/
 .idea/
-# .claude/: trackear solo lo compartible del repo (plugins + settings.json).
+# .claude/: trackear solo lo compartible del repo (plugins + agents + settings.json).
 # El resto (settings.local.json, caches, etc.) queda local.
 .claude/*
 !.claude/plugins/
+!.claude/agents/
 !.claude/settings.json
 coverage/
 

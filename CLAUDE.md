@@ -1,5 +1,19 @@
 # CLAUDE.md — miganado
 
+## Opinion de negocio/dominio → usa el subagente `experto-cuidado-ganado`
+
+Cuando el usuario haga cambios o agregue funcionalidades del dominio (lotes,
+animales, potreros, fincas, pastoreo, sanidad, reproduccion, pesaje,
+comercializacion/feria) y quiera validar si tiene sentido en el campo —o cuando
+pida "una opinion", "que opinaria un ganadero", "valida esto", "tiene sentido para
+el cliente"— invoca el subagente `experto-cuidado-ganado` via la tool Agent.
+
+Es un stakeholder (un ganadero real de Cordoba) que opina desde el cuidado del
+ganado y la rentabilidad: da veredicto, reparos del campo y prioridades. Es de
+solo lectura: NO implementa codigo, solo aporta criterio. Definido en
+`.claude/agents/experto-cuidado-ganado.md`. Conviene consultarlo ANTES de
+implementar features de dominio o justo despues de diseñarlas.
+
 ## Problemas de produccion → usa el subagente `coolify-devops:coolify-admin`
 
 Cuando el usuario reporte un problema en produccion (sitio caido, contenedor unhealthy,
