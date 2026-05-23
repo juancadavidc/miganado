@@ -5,8 +5,31 @@ import { api } from '../api/client';
 import type { Lote } from '../types';
 import { fmtDate, fmtMoney, fmtNum } from '../lib/format';
 import { SexoBadge } from '../components/SexoBadge';
+import { useAuth } from '../auth/AuthContext';
+
+function RolTag({ lote, meId }: { lote: Lote; meId?: string }) {
+  if (!meId || !lote.dueno) return null;
+  const soyDueno = lote.dueno.id === meId;
+  if (!soyDueno) {
+    return (
+      <span className="badge" style={{ marginLeft: 6, background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }}>
+        Cuido
+      </span>
+    );
+  }
+  if (lote.cuidador && lote.cuidador.id !== lote.dueno.id) {
+    return (
+      <span className="badge" style={{ marginLeft: 6 }} title={`Cuida: ${lote.cuidador.nombre}`}>
+        Cuida: {lote.cuidador.nombre.split(/\s+/)[0]}
+      </span>
+    );
+  }
+  return null;
+}
 
 export function DashboardPage() {
+  const { user } = useAuth();
+  const meId = user?.id;
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +109,7 @@ export function DashboardPage() {
                   <tr key={l.id}>
                     <td>{fmtDate(l.fecha)}</td>
                     <td>{l.numeroFeria ?? '—'}</td>
-                    <td>{l.loteNumero ?? '—'}</td>
+                    <td>{l.loteNumero ?? '—'}<RolTag lote={l} meId={meId} /></td>
                     <td><SexoBadge sexo={l.sexo} /></td>
                     <td className="num">{l.cantidad}</td>
                     <td className="num">{fmtNum(l.pesoTotal)}</td>
@@ -112,6 +135,7 @@ export function DashboardPage() {
                     <div style={{ fontWeight: 700 }}>{fmtDate(l.fecha)}</div>
                     <div className="muted" style={{ fontSize: '0.8rem' }}>
                       Feria {l.numeroFeria ?? '—'} · Lote {l.loteNumero ?? '—'}
+                      <RolTag lote={l} meId={meId} />
                     </div>
                   </div>
                   <SexoBadge sexo={l.sexo} />

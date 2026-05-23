@@ -15,14 +15,15 @@ async function main() {
   });
 
   // Limpiar lotes previos del usuario demo para dejar estado conocido
-  await prisma.lote.deleteMany({ where: { userId: user.id } });
+  await prisma.lote.deleteMany({ where: { duenoId: user.id } });
 
   // Datos reales tomados de la planilla "Centro Comercial Ganadero SAS" (14-may-2026)
   const fecha = new Date('2026-05-14T00:00:00.000Z');
 
   const lote1 = await prisma.lote.create({
     data: {
-      userId: user.id,
+      duenoId: user.id,
+      cuidadorId: user.id,
       fecha,
       numeroFeria: '026',
       loteNumero: '199',
@@ -49,7 +50,8 @@ async function main() {
 
   await prisma.lote.create({
     data: {
-      userId: user.id,
+      duenoId: user.id,
+      cuidadorId: user.id,
       fecha,
       numeroFeria: '026',
       loteNumero: '047',
@@ -70,7 +72,8 @@ async function main() {
 
   await prisma.lote.create({
     data: {
-      userId: user.id,
+      duenoId: user.id,
+      cuidadorId: user.id,
       fecha,
       numeroFeria: '026',
       loteNumero: '217',
@@ -88,7 +91,8 @@ async function main() {
 
   await prisma.lote.create({
     data: {
-      userId: user.id,
+      duenoId: user.id,
+      cuidadorId: user.id,
       fecha,
       numeroFeria: '026',
       loteNumero: '039',
@@ -106,7 +110,8 @@ async function main() {
 
   await prisma.lote.create({
     data: {
-      userId: user.id,
+      duenoId: user.id,
+      cuidadorId: user.id,
       fecha,
       numeroFeria: '026',
       loteNumero: '070',

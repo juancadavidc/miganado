@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { puedeOperar, rolesEnLote } from '../lib/loteAccess.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -18,10 +19,9 @@ router.post('/', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const { loteId, descripcion, monto, fecha } = parsed.data;
-  const lote = await prisma.lote.findFirst({
-    where: { id: loteId, userId: req.user!.userId },
-  });
-  if (!lote) return res.status(404).json({ error: 'Lote no encontrado' });
+  if (!(await rolesEnLote(req.user!.userId, loteId))) {
+    return res.status(404).json({ error: 'Lote no encontrado' });
+  }
 
   const gasto = await prisma.gasto.create({
     data: {
@@ -37,9 +37,9 @@ router.post('/', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const existing = await prisma.gasto.findUnique({
     where: { id: req.params.id },
-    include: { lote: true },
+    include: { lote: { select: { duenoId: true, cuidadorId: true } } },
   });
-  if (!existing || existing.lote.userId !== req.user!.userId) {
+  if (!existing || !puedeOperar(existing.lote, req.user!.userId)) {
     return res.status(404).json({ error: 'Gasto no encontrado' });
   }
   await prisma.gasto.delete({ where: { id: req.params.id } });

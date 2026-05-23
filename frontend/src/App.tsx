@@ -7,6 +7,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { LoteFormPage } from './pages/LoteFormPage';
 import { LoteImportPage } from './pages/LoteImportPage';
 import { LoteDetallePage } from './pages/LoteDetallePage';
+import { TrasladosPage } from './pages/TrasladosPage';
 import { FincasPage } from './pages/FincasPage';
 import { FincaDetallePage } from './pages/FincaDetallePage';
 
@@ -54,6 +55,14 @@ export default function App() {
           element={
             <Protected>
               <LoteDetallePage />
+            </Protected>
+          }
+        />
+        <Route
+          path="/traslados"
+          element={
+            <Protected>
+              <TrasladosPage />
             </Protected>
           }
         />

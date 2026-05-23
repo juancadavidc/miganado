@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { puedeOperar, rolesEnLote } from '../lib/loteAccess.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -23,22 +24,21 @@ async function userOwnsTarget(
   target: { loteId?: string; animalId?: string; gastoId?: string },
 ): Promise<boolean> {
   if (target.loteId) {
-    const lote = await prisma.lote.findFirst({ where: { id: target.loteId, userId } });
-    return !!lote;
+    return !!(await rolesEnLote(userId, target.loteId));
   }
   if (target.animalId) {
     const animal = await prisma.animal.findUnique({
       where: { id: target.animalId },
-      include: { lote: true },
+      include: { lote: { select: { duenoId: true, cuidadorId: true } } },
     });
-    return !!animal && animal.lote.userId === userId;
+    return !!animal && puedeOperar(animal.lote, userId);
   }
   if (target.gastoId) {
     const gasto = await prisma.gasto.findUnique({
       where: { id: target.gastoId },
-      include: { lote: true },
+      include: { lote: { select: { duenoId: true, cuidadorId: true } } },
     });
-    return !!gasto && gasto.lote.userId === userId;
+    return !!gasto && puedeOperar(gasto.lote, userId);
   }
   return false;
 }
@@ -72,16 +72,15 @@ router.put('/:id', async (req, res) => {
   const existing = await prisma.anotacion.findUnique({
     where: { id: req.params.id },
     include: {
-      lote: true,
-      animal: { include: { lote: true } },
-      gasto: { include: { lote: true } },
+      lote: { select: { duenoId: true, cuidadorId: true } },
+      animal: { include: { lote: { select: { duenoId: true, cuidadorId: true } } } },
+      gasto: { include: { lote: { select: { duenoId: true, cuidadorId: true } } } },
     },
   });
   if (!existing) return res.status(404).json({ error: 'Anotación no encontrada' });
 
-  const ownerId =
-    existing.lote?.userId ?? existing.animal?.lote.userId ?? existing.gasto?.lote.userId;
-  if (ownerId !== req.user!.userId) {
+  const loteRoles = existing.lote ?? existing.animal?.lote ?? existing.gasto?.lote;
+  if (!loteRoles || !puedeOperar(loteRoles, req.user!.userId)) {
     return res.status(404).json({ error: 'Anotación no encontrada' });
   }
 
@@ -96,16 +95,15 @@ router.delete('/:id', async (req, res) => {
   const existing = await prisma.anotacion.findUnique({
     where: { id: req.params.id },
     include: {
-      lote: true,
-      animal: { include: { lote: true } },
-      gasto: { include: { lote: true } },
+      lote: { select: { duenoId: true, cuidadorId: true } },
+      animal: { include: { lote: { select: { duenoId: true, cuidadorId: true } } } },
+      gasto: { include: { lote: { select: { duenoId: true, cuidadorId: true } } } },
     },
   });
   if (!existing) return res.status(404).json({ error: 'Anotación no encontrada' });
 
-  const ownerId =
-    existing.lote?.userId ?? existing.animal?.lote.userId ?? existing.gasto?.lote.userId;
-  if (ownerId !== req.user!.userId) {
+  const loteRoles = existing.lote ?? existing.animal?.lote ?? existing.gasto?.lote;
+  if (!loteRoles || !puedeOperar(loteRoles, req.user!.userId)) {
     return res.status(404).json({ error: 'Anotación no encontrada' });
   }
 

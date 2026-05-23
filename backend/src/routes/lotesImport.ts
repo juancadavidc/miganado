@@ -163,7 +163,8 @@ router.post('/bulk', async (req, res) => {
     parsed.data.lotes.map((d) =>
       prisma.lote.create({
         data: {
-          userId,
+          duenoId: userId,
+          cuidadorId: userId,
           fecha: new Date(d.fecha),
           numeroFeria: d.numeroFeria ?? null,
           loteNumero: d.loteNumero ?? null,

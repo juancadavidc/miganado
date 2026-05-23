@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, ChevronDown, Menu, X, Beef, LandPlot } from 'lucide-react';
+import { LogOut, ChevronDown, Menu, X, Beef, LandPlot, ArrowLeftRight } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { api } from '../api/client';
 import { BrandMark } from './BrandMark';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Lotes', icon: Beef, end: true },
+  { to: '/traslados', label: 'Traslados', icon: ArrowLeftRight, end: false },
   { to: '/fincas', label: 'Fincas', icon: LandPlot, end: false },
 ];
 
@@ -15,7 +17,16 @@ export function Navbar() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [pendientes, setPendientes] = useState(0);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Traslados recibidos pendientes de aceptar (para el badge del menú).
+  useEffect(() => {
+    if (!user) return;
+    api<{ recibidos: unknown[] }>('/api/traslados')
+      .then((d) => setPendientes(d.recibidos.length))
+      .catch(() => { /* sin badge si falla */ });
+  }, [user, location.pathname]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -94,6 +105,11 @@ export function Navbar() {
               >
                 <Icon size={16} aria-hidden="true" />
                 {label}
+                {to === '/traslados' && pendientes > 0 && (
+                  <span className="badge" style={{ marginLeft: 4, background: 'var(--color-primary)', color: '#fff' }}>
+                    {pendientes}
+                  </span>
+                )}
               </NavLink>
             ))}
           </div>
@@ -161,6 +177,11 @@ export function Navbar() {
                 >
                   <Icon size={18} aria-hidden="true" />
                   {label}
+                  {to === '/traslados' && pendientes > 0 && (
+                    <span className="badge" style={{ marginLeft: 'auto', background: 'var(--color-primary)', color: '#fff' }}>
+                      {pendientes}
+                    </span>
+                  )}
                 </NavLink>
               ))}
             </nav>
