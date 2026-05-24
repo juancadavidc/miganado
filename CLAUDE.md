@@ -1,5 +1,35 @@
 # CLAUDE.md — miganado
 
+## Principios de trabajo
+
+- **Piensa antes de codear.** No asumas. No escondas la confusion. Si hay varias
+  interpretaciones, pregunta antes de decidir en silencio. Nombra los tradeoffs.
+- **Simplicidad primero.** El minimo codigo que resuelve el problema. Nada
+  especulativo: sin abstracciones prematuras, sin features no pedidas, sin manejo
+  de errores para casos que no pasan. El usuario trabaja desde el celular en el
+  campo, a pleno sol — desconfia de formularios largos y flujos enredados.
+- **Cambios quirurgicos.** Toca solo lo necesario y respeta el estilo existente.
+  No "mejores" codigo no relacionado. Borra solo lo que TU cambio dejo obsoleto,
+  no codigo muerto preexistente.
+- **Criterio de exito verificable.** Convierte "que funcione" en un objetivo
+  testeable. Cambios de UI: pruebalos en el navegador (golden path + bordes).
+  Backend: valida con la migracion/endpoint real, no de palabra.
+
+## Documentacion viva → actualiza el README al cambiar funcionalidad
+
+Cuando agregues, cambies o quites una funcionalidad, actualiza la documentacion
+**en el mismo cambio**, no despues:
+
+- `README.md` describe el **presente**: lo que la app SI hace hoy (modelo de
+  datos, tabla de endpoints, flujos, variables de entorno). Si tocas el esquema
+  Prisma o agregas/quitas endpoints, refleja el modelo de datos y la tabla de
+  endpoints del README.
+- `docs/roadmap.md` describe el **futuro**: si la funcionalidad estaba en el
+  roadmap, marcala/muevela; si surge una idea nueva que se aplaza, agregala.
+
+Regla simple: si un cambio haria que el README mienta, el cambio no esta completo
+hasta arreglar el README.
+
 ## Opinion de negocio/dominio → usa el subagente `experto-cuidado-ganado`
 
 Cuando el usuario haga cambios o agregue funcionalidades del dominio (lotes,
