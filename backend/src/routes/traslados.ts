@@ -1,20 +1,17 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
-import { usuarioPublicSelect } from '../lib/loteAccess.js';
+import { usuarioPublicSelect } from '../lib/fincaAccess.js';
 
 const router = Router();
 router.use(requireAuth);
 
-const loteResumenSelect = {
+const fincaResumenSelect = {
   id: true,
-  fecha: true,
-  numeroFeria: true,
-  loteNumero: true,
-  sexo: true,
-  cantidad: true,
+  nombre: true,
   dueno: { select: usuarioPublicSelect },
   cuidador: { select: usuarioPublicSelect },
+  _count: { select: { lotes: true, potreros: true } },
 } as const;
 
 // Traslados pendientes: los que recibí (debo aceptar/rechazar) y los que envié
@@ -26,7 +23,7 @@ router.get('/', async (req, res) => {
       where: { paraUserId: me, estado: 'PENDIENTE' },
       orderBy: { createdAt: 'desc' },
       include: {
-        lote: { select: loteResumenSelect },
+        finca: { select: fincaResumenSelect },
         creadoPor: { select: usuarioPublicSelect },
       },
     }),
@@ -34,7 +31,7 @@ router.get('/', async (req, res) => {
       where: { creadoPorId: me, estado: 'PENDIENTE' },
       orderBy: { createdAt: 'desc' },
       include: {
-        lote: { select: loteResumenSelect },
+        finca: { select: fincaResumenSelect },
         para: { select: usuarioPublicSelect },
       },
     }),
@@ -42,7 +39,7 @@ router.get('/', async (req, res) => {
   res.json({ recibidos, enviados });
 });
 
-// El destinatario acepta: recién acá el lote cambia de dueño/cuidador.
+// El destinatario acepta: recién acá la finca cambia de dueño/cuidador.
 router.post('/:id/aceptar', async (req, res) => {
   const me = req.user!.userId;
   const traslado = await prisma.traslado.findFirst({
@@ -56,9 +53,9 @@ router.post('/:id/aceptar', async (req, res) => {
       data: { estado: 'ACEPTADO', respondidoAt: new Date() },
     });
     if (traslado.rol === 'CUIDADOR') {
-      await tx.lote.update({ where: { id: traslado.loteId }, data: { cuidadorId: me } });
+      await tx.finca.update({ where: { id: traslado.fincaId }, data: { cuidadorId: me } });
     } else {
-      await tx.lote.update({ where: { id: traslado.loteId }, data: { duenoId: me } });
+      await tx.finca.update({ where: { id: traslado.fincaId }, data: { duenoId: me } });
     }
   });
   res.json({ ok: true });

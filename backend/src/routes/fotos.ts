@@ -5,7 +5,7 @@ import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { r2Put, r2Delete } from '../lib/r2.js';
 import { withUrl } from '../lib/foto.js';
-import { puedeOperar, rolesEnLote } from '../lib/loteAccess.js';
+import { puedeOperar, rolesEnFincaDeLote } from '../lib/fincaAccess.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -37,13 +37,13 @@ router.post('/', upload.single('foto'), async (req, res) => {
   if (animalId) {
     const animal = await prisma.animal.findUnique({
       where: { id: animalId },
-      include: { lote: { select: { duenoId: true, cuidadorId: true } } },
+      include: { lote: { select: { finca: { select: { duenoId: true, cuidadorId: true } } } } },
     });
-    if (!animal || !puedeOperar(animal.lote, req.user!.userId)) {
+    if (!animal || !puedeOperar(animal.lote.finca, req.user!.userId)) {
       return res.status(404).json({ error: 'Animal no encontrado' });
     }
   } else if (loteId) {
-    if (!(await rolesEnLote(req.user!.userId, loteId))) {
+    if (!(await rolesEnFincaDeLote(req.user!.userId, loteId))) {
       return res.status(404).json({ error: 'Lote no encontrado' });
     }
   }
@@ -67,14 +67,14 @@ router.delete('/:id', async (req, res) => {
   const foto = await prisma.foto.findUnique({
     where: { id: req.params.id },
     include: {
-      lote: { select: { duenoId: true, cuidadorId: true } },
-      animal: { include: { lote: { select: { duenoId: true, cuidadorId: true } } } },
+      lote: { select: { finca: { select: { duenoId: true, cuidadorId: true } } } },
+      animal: { include: { lote: { select: { finca: { select: { duenoId: true, cuidadorId: true } } } } } },
     },
   });
   if (!foto) return res.status(404).json({ error: 'Foto no encontrada' });
 
-  const loteRoles = foto.lote ?? foto.animal?.lote;
-  if (!loteRoles || !puedeOperar(loteRoles, req.user!.userId)) {
+  const fincaRoles = foto.lote?.finca ?? foto.animal?.lote.finca;
+  if (!fincaRoles || !puedeOperar(fincaRoles, req.user!.userId)) {
     return res.status(404).json({ error: 'Foto no encontrada' });
   }
 

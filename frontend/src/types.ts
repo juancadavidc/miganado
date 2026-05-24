@@ -40,20 +40,17 @@ export type UsuarioMini = {
 export type TrasladoRol = 'DUENO' | 'CUIDADOR';
 export type TrasladoEstado = 'PENDIENTE' | 'ACEPTADO' | 'RECHAZADO' | 'CANCELADO';
 
-export type TrasladoLoteResumen = {
+export type TrasladoFincaResumen = {
   id: string;
-  fecha: string;
-  numeroFeria: string | null;
-  loteNumero: string | null;
-  sexo: Sexo;
-  cantidad: number;
+  nombre: string;
   dueno?: UsuarioMini;
   cuidador?: UsuarioMini | null;
+  _count?: { lotes: number; potreros: number };
 };
 
 export type Traslado = {
   id: string;
-  loteId: string;
+  fincaId: string;
   rol: TrasladoRol;
   estado: TrasladoEstado;
   mensaje: string | null;
@@ -61,7 +58,15 @@ export type Traslado = {
   respondidoAt: string | null;
   para?: UsuarioMini;
   creadoPor?: UsuarioMini;
-  lote?: TrasladoLoteResumen;
+  finca?: TrasladoFincaResumen;
+};
+
+// Resumen de la finca que viene embebido en cada lote (de dónde hereda dueño/cuidador).
+export type LoteFincaResumen = {
+  id: string;
+  nombre: string;
+  dueno?: UsuarioMini;
+  cuidador?: UsuarioMini | null;
 };
 
 export type Finca = {
@@ -69,9 +74,12 @@ export type Finca = {
   nombre: string;
   capacidad: number; // 16 | 32 | 64 — ancho del mapa en columnas
   propiedades: Record<string, string> | null;
+  dueno?: UsuarioMini;
+  cuidador?: UsuarioMini | null;
+  traslados?: Traslado[];
   createdAt: string;
   updatedAt: string;
-  _count?: { potreros: number };
+  _count?: { potreros: number; lotes: number };
 };
 
 export type Potrero = {
@@ -120,8 +128,8 @@ export type Lote = {
   notas: string | null;
   createdAt: string;
   updatedAt: string;
-  dueno?: UsuarioMini;
-  cuidador?: UsuarioMini | null;
+  fincaId: string;
+  finca?: LoteFincaResumen;
   _count?: { animales: number; fotos: number; gastos: number };
 };
 
@@ -162,5 +170,4 @@ export type LoteDetalle = Lote & {
   gastos: Gasto[];
   fotos: Foto[];
   anotaciones: Anotacion[];
-  traslados?: Traslado[];
 };

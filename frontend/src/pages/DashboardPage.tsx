@@ -8,8 +8,9 @@ import { SexoBadge } from '../components/SexoBadge';
 import { useAuth } from '../auth/AuthContext';
 
 function RolTag({ lote, meId }: { lote: Lote; meId?: string }) {
-  if (!meId || !lote.dueno) return null;
-  const soyDueno = lote.dueno.id === meId;
+  const finca = lote.finca;
+  if (!meId || !finca?.dueno) return null;
+  const soyDueno = finca.dueno.id === meId;
   if (!soyDueno) {
     return (
       <span className="badge" style={{ marginLeft: 6, background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }}>
@@ -17,10 +18,10 @@ function RolTag({ lote, meId }: { lote: Lote; meId?: string }) {
       </span>
     );
   }
-  if (lote.cuidador && lote.cuidador.id !== lote.dueno.id) {
+  if (finca.cuidador && finca.cuidador.id !== finca.dueno.id) {
     return (
-      <span className="badge" style={{ marginLeft: 6 }} title={`Cuida: ${lote.cuidador.nombre}`}>
-        Cuida: {lote.cuidador.nombre.split(/\s+/)[0]}
+      <span className="badge" style={{ marginLeft: 6 }} title={`Cuida: ${finca.cuidador.nombre}`}>
+        Cuida: {finca.cuidador.nombre.split(/\s+/)[0]}
       </span>
     );
   }

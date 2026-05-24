@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowLeftRight, Check, X, Clock, AlertCircle, Inbox, Send,
+  Check, X, Clock, AlertCircle, Inbox, Send, LandPlot,
 } from 'lucide-react';
 import { api, ApiError } from '../api/client';
 import type { Traslado, TrasladoRol } from '../types';
-import { fmtDate } from '../lib/format';
-import { SexoBadge } from '../components/SexoBadge';
 
 function rolLabel(rol: TrasladoRol): string {
   return rol === 'DUENO' ? 'la propiedad (dueño)' : 'el cuidado (cuidador)';
@@ -52,7 +50,7 @@ export function TrasladosPage() {
       <header className="page-header">
         <div>
           <h1>Traslados</h1>
-          <p className="subtitle">Asignaciones de cuidado y traspasos de propiedad por confirmar</p>
+          <p className="subtitle">Asignaciones de cuidado y traspasos de propiedad de fincas por confirmar</p>
         </div>
       </header>
 
@@ -80,10 +78,15 @@ export function TrasladosPage() {
                   <div key={t.id} className="card" style={{ background: 'var(--color-surface-2)' }}>
                     <div style={{ marginBottom: 'var(--space-2)' }}>
                       <strong>{t.creadoPor?.nombre}</strong>
-                      {' te ofrece '}{rolLabel(t.rol)}{' del '}
-                      <LoteResumen t={t} />
+                      {' te ofrece '}{rolLabel(t.rol)}{' de la '}
+                      <FincaResumen t={t} />
                     </div>
                     {t.mensaje && <p className="muted" style={{ marginTop: 0 }}>“{t.mensaje}”</p>}
+                    {t.rol === 'CUIDADOR' && (
+                      <p className="muted" style={{ marginTop: 0, fontSize: '0.8rem' }}>
+                        Al aceptar, quedás a cargo del cuidado de toda la finca y sus lotes.
+                      </p>
+                    )}
                     <div className="row" style={{ gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
                       <button
                         type="button"
@@ -122,8 +125,8 @@ export function TrasladosPage() {
                     <div className="row" style={{ gap: 'var(--space-2)' }}>
                       <Clock size={14} aria-hidden="true" />
                       <span>
-                        Le ofreciste {rolLabel(t.rol)} del{' '}
-                        <Link to={`/lotes/${t.loteId}`}>lote {t.lote?.loteNumero ?? '—'}</Link>
+                        Le ofreciste {rolLabel(t.rol)} de la{' '}
+                        <Link to={`/fincas/${t.fincaId}`}>finca {t.finca?.nombre ?? '—'}</Link>
                         {' a '}<strong>{t.para?.nombre}</strong> — esperando respuesta.
                       </span>
                     </div>
@@ -146,15 +149,16 @@ export function TrasladosPage() {
   );
 }
 
-function LoteResumen({ t }: { t: Traslado }) {
-  const l = t.lote;
-  if (!l) return <>lote</>;
+function FincaResumen({ t }: { t: Traslado }) {
+  const f = t.finca;
+  if (!f) return <>finca</>;
+  const lotes = f._count?.lotes ?? 0;
+  const potreros = f._count?.potreros ?? 0;
   return (
     <span className="row" style={{ gap: 'var(--space-2)', display: 'inline-flex', verticalAlign: 'middle' }}>
-      <ArrowLeftRight size={13} aria-hidden="true" />
-      lote <strong>{l.loteNumero ?? '—'}</strong>
-      <SexoBadge sexo={l.sexo} />
-      <span className="muted">· {l.cantidad} cab. · {fmtDate(l.fecha)}</span>
+      <LandPlot size={13} aria-hidden="true" />
+      finca <strong>{f.nombre}</strong>
+      <span className="muted">· {lotes} {lotes === 1 ? 'lote' : 'lotes'} · {potreros} {potreros === 1 ? 'potrero' : 'potreros'}</span>
     </span>
   );
 }

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { env } from '../lib/env.js';
+import { rolesEnFinca } from '../lib/fincaAccess.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -152,19 +153,25 @@ const bulkRow = z.object({
   criasHembra: z.coerce.number().int().min(0).default(0),
   notas: z.string().optional().nullable(),
 });
-const bulkSchema = z.object({ lotes: z.array(bulkRow).min(1) });
+const bulkSchema = z.object({
+  fincaId: z.string().min(1, 'La finca es obligatoria'),
+  lotes: z.array(bulkRow).min(1),
+});
 
 router.post('/bulk', async (req, res) => {
   const parsed = bulkSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const userId = req.user!.userId;
+  const { fincaId } = parsed.data;
+  if (!(await rolesEnFinca(req.user!.userId, fincaId))) {
+    return res.status(404).json({ error: 'Finca no encontrada' });
+  }
+
   const created = await prisma.$transaction(
     parsed.data.lotes.map((d) =>
       prisma.lote.create({
         data: {
-          duenoId: userId,
-          cuidadorId: userId,
+          fincaId,
           fecha: new Date(d.fecha),
           numeroFeria: d.numeroFeria ?? null,
           loteNumero: d.loteNumero ?? null,

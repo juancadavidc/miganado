@@ -1,11 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Plus, LandPlot, Fence, Pencil, Trash2, AlertCircle, X, ChevronRight,
+  Plus, LandPlot, Fence, Pencil, Trash2, AlertCircle, X, ChevronRight, Users,
 } from 'lucide-react';
 import { api, ApiError } from '../api/client';
 import type { Finca } from '../types';
 import { useConfirm } from '../components/ConfirmDialog';
+import { useAuth } from '../auth/AuthContext';
 
 type ModalState =
   | { open: false }
@@ -28,6 +29,8 @@ const PROP_SUGERENCIAS = [
 
 export function FincasPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const meId = user?.id;
   const [fincas, setFincas] = useState<Finca[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +114,12 @@ export function FincasPage() {
             >
               <div className="potrero-card-head">
                 <span className="potrero-icon" aria-hidden="true"><LandPlot size={18} /></span>
-                <span className="badge">{f.capacidad}×{f.capacidad}</span>
+                <span className="row" style={{ gap: 'var(--space-1)' }}>
+                  {meId && f.cuidador?.id === meId && f.dueno?.id !== meId && (
+                    <span className="badge" style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }}>Cuido</span>
+                  )}
+                  <span className="badge">{f.capacidad}×{f.capacidad}</span>
+                </span>
               </div>
 
               <h3 className="potrero-nombre">{f.nombre}</h3>
@@ -120,6 +128,13 @@ export function FincasPage() {
                 <Fence size={14} aria-hidden="true" />
                 <span><strong>{f._count?.potreros ?? 0}</strong> {f._count?.potreros === 1 ? 'potrero' : 'potreros'}</span>
               </div>
+
+              {f.cuidador && f.cuidador.id !== f.dueno?.id && (
+                <div className="potrero-stat">
+                  <Users size={14} aria-hidden="true" />
+                  <span>Cuidador: <strong>{f.cuidador.nombre}</strong></span>
+                </div>
+              )}
 
               {f.propiedades && Object.keys(f.propiedades).length > 0 && (
                 <dl className="potrero-meta">
@@ -146,15 +161,17 @@ export function FincasPage() {
                 >
                   <Pencil size={16} />
                 </button>
-                <button
-                  type="button"
-                  className="btn-ghost btn-icon"
-                  onClick={(e) => { e.stopPropagation(); eliminar(f); }}
-                  aria-label={`Eliminar ${f.nombre}`}
-                  disabled={busyId === f.id}
-                >
-                  <Trash2 size={16} />
-                </button>
+                {f.dueno?.id === meId && (
+                  <button
+                    type="button"
+                    className="btn-ghost btn-icon"
+                    onClick={(e) => { e.stopPropagation(); eliminar(f); }}
+                    aria-label={`Eliminar ${f.nombre}`}
+                    disabled={busyId === f.id}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
             </article>
           ))}

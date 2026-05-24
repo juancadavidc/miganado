@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
-import { puedeOperar, rolesEnLote } from '../lib/loteAccess.js';
+import { puedeOperar, rolesEnFincaDeLote } from '../lib/fincaAccess.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -24,21 +24,21 @@ async function userOwnsTarget(
   target: { loteId?: string; animalId?: string; gastoId?: string },
 ): Promise<boolean> {
   if (target.loteId) {
-    return !!(await rolesEnLote(userId, target.loteId));
+    return !!(await rolesEnFincaDeLote(userId, target.loteId));
   }
   if (target.animalId) {
     const animal = await prisma.animal.findUnique({
       where: { id: target.animalId },
-      include: { lote: { select: { duenoId: true, cuidadorId: true } } },
+      include: { lote: { select: { finca: { select: { duenoId: true, cuidadorId: true } } } } },
     });
-    return !!animal && puedeOperar(animal.lote, userId);
+    return !!animal && puedeOperar(animal.lote.finca, userId);
   }
   if (target.gastoId) {
     const gasto = await prisma.gasto.findUnique({
       where: { id: target.gastoId },
-      include: { lote: { select: { duenoId: true, cuidadorId: true } } },
+      include: { lote: { select: { finca: { select: { duenoId: true, cuidadorId: true } } } } },
     });
-    return !!gasto && puedeOperar(gasto.lote, userId);
+    return !!gasto && puedeOperar(gasto.lote.finca, userId);
   }
   return false;
 }
@@ -72,15 +72,15 @@ router.put('/:id', async (req, res) => {
   const existing = await prisma.anotacion.findUnique({
     where: { id: req.params.id },
     include: {
-      lote: { select: { duenoId: true, cuidadorId: true } },
-      animal: { include: { lote: { select: { duenoId: true, cuidadorId: true } } } },
-      gasto: { include: { lote: { select: { duenoId: true, cuidadorId: true } } } },
+      lote: { select: { finca: { select: { duenoId: true, cuidadorId: true } } } },
+      animal: { include: { lote: { select: { finca: { select: { duenoId: true, cuidadorId: true } } } } } },
+      gasto: { include: { lote: { select: { finca: { select: { duenoId: true, cuidadorId: true } } } } } },
     },
   });
   if (!existing) return res.status(404).json({ error: 'Anotación no encontrada' });
 
-  const loteRoles = existing.lote ?? existing.animal?.lote ?? existing.gasto?.lote;
-  if (!loteRoles || !puedeOperar(loteRoles, req.user!.userId)) {
+  const fincaRoles = existing.lote?.finca ?? existing.animal?.lote.finca ?? existing.gasto?.lote.finca;
+  if (!fincaRoles || !puedeOperar(fincaRoles, req.user!.userId)) {
     return res.status(404).json({ error: 'Anotación no encontrada' });
   }
 
@@ -95,15 +95,15 @@ router.delete('/:id', async (req, res) => {
   const existing = await prisma.anotacion.findUnique({
     where: { id: req.params.id },
     include: {
-      lote: { select: { duenoId: true, cuidadorId: true } },
-      animal: { include: { lote: { select: { duenoId: true, cuidadorId: true } } } },
-      gasto: { include: { lote: { select: { duenoId: true, cuidadorId: true } } } },
+      lote: { select: { finca: { select: { duenoId: true, cuidadorId: true } } } },
+      animal: { include: { lote: { select: { finca: { select: { duenoId: true, cuidadorId: true } } } } } },
+      gasto: { include: { lote: { select: { finca: { select: { duenoId: true, cuidadorId: true } } } } } },
     },
   });
   if (!existing) return res.status(404).json({ error: 'Anotación no encontrada' });
 
-  const loteRoles = existing.lote ?? existing.animal?.lote ?? existing.gasto?.lote;
-  if (!loteRoles || !puedeOperar(loteRoles, req.user!.userId)) {
+  const fincaRoles = existing.lote?.finca ?? existing.animal?.lote.finca ?? existing.gasto?.lote.finca;
+  if (!fincaRoles || !puedeOperar(fincaRoles, req.user!.userId)) {
     return res.status(404).json({ error: 'Anotación no encontrada' });
   }
 
