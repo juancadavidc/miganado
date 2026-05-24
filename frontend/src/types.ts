@@ -31,6 +31,39 @@ export type User = {
   createdAt?: string;
 };
 
+export type UsuarioMini = {
+  id: string;
+  nombre: string;
+  documento: string;
+};
+
+export type TrasladoRol = 'DUENO' | 'CUIDADOR';
+export type TrasladoEstado = 'PENDIENTE' | 'ACEPTADO' | 'RECHAZADO' | 'CANCELADO';
+
+export type TrasladoLoteResumen = {
+  id: string;
+  fecha: string;
+  numeroFeria: string | null;
+  loteNumero: string | null;
+  sexo: Sexo;
+  cantidad: number;
+  dueno?: UsuarioMini;
+  cuidador?: UsuarioMini | null;
+};
+
+export type Traslado = {
+  id: string;
+  loteId: string;
+  rol: TrasladoRol;
+  estado: TrasladoEstado;
+  mensaje: string | null;
+  createdAt: string;
+  respondidoAt: string | null;
+  para?: UsuarioMini;
+  creadoPor?: UsuarioMini;
+  lote?: TrasladoLoteResumen;
+};
+
 export type Finca = {
   id: string;
   nombre: string;
@@ -87,6 +120,8 @@ export type Lote = {
   notas: string | null;
   createdAt: string;
   updatedAt: string;
+  dueno?: UsuarioMini;
+  cuidador?: UsuarioMini | null;
   _count?: { animales: number; fotos: number; gastos: number };
 };
 
@@ -127,4 +162,5 @@ export type LoteDetalle = Lote & {
   gastos: Gasto[];
   fotos: Foto[];
   anotaciones: Anotacion[];
+  traslados?: Traslado[];
 };

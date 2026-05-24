@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { puedeOperar, rolesEnLote } from '../lib/loteAccess.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -18,17 +19,12 @@ const animalSchema = z.object({
   notas: z.string().optional().nullable(),
 });
 
-async function userOwnsLote(userId: string, loteId: string): Promise<boolean> {
-  const lote = await prisma.lote.findFirst({ where: { id: loteId, userId } });
-  return !!lote;
-}
-
 router.post('/', async (req, res) => {
   const parsed = animalSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const { loteId, ...rest } = parsed.data;
-  if (!(await userOwnsLote(req.user!.userId, loteId))) {
+  if (!(await rolesEnLote(req.user!.userId, loteId))) {
     return res.status(404).json({ error: 'Lote no encontrado' });
   }
 
@@ -51,9 +47,9 @@ router.put('/:id', async (req, res) => {
 
   const existing = await prisma.animal.findUnique({
     where: { id: req.params.id },
-    include: { lote: true },
+    include: { lote: { select: { duenoId: true, cuidadorId: true } } },
   });
-  if (!existing || existing.lote.userId !== req.user!.userId) {
+  if (!existing || !puedeOperar(existing.lote, req.user!.userId)) {
     return res.status(404).json({ error: 'Animal no encontrado' });
   }
 
@@ -74,9 +70,9 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const existing = await prisma.animal.findUnique({
     where: { id: req.params.id },
-    include: { lote: true },
+    include: { lote: { select: { duenoId: true, cuidadorId: true } } },
   });
-  if (!existing || existing.lote.userId !== req.user!.userId) {
+  if (!existing || !puedeOperar(existing.lote, req.user!.userId)) {
     return res.status(404).json({ error: 'Animal no encontrado' });
   }
   await prisma.animal.delete({ where: { id: req.params.id } });

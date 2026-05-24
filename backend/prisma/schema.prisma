@@ -21,6 +21,18 @@ enum CriaSexo {
   H
 }
 
+enum TrasladoRol {
+  DUENO    // se transfiere la propiedad del lote
+  CUIDADOR // se asigna el cuidado del lote
+}
+
+enum TrasladoEstado {
+  PENDIENTE
+  ACEPTADO
+  RECHAZADO
+  CANCELADO
+}
+
 model User {
   id           String   @id @default(cuid())
   documento    String   @unique
@@ -29,9 +41,12 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  lotes    Lote[]
-  potreros Potrero[]
-  fincas   Finca[]
+  lotesPropios       Lote[]     @relation("LoteDueno")
+  lotesCuidados      Lote[]     @relation("LoteCuidador")
+  trasladosRecibidos Traslado[] @relation("TrasladoPara")
+  trasladosCreados   Traslado[] @relation("TrasladoCreadoPor")
+  potreros           Potrero[]
+  fincas             Finca[]
 }
 
 model Finca {
@@ -73,8 +88,10 @@ model Potrero {
 
 model Lote {
   id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  duenoId      String
+  dueno        User     @relation("LoteDueno", fields: [duenoId], references: [id], onDelete: Cascade)
+  cuidadorId   String?
+  cuidador     User?    @relation("LoteCuidador", fields: [cuidadorId], references: [id], onDelete: SetNull)
   fecha        DateTime
   numeroFeria  String?
   loteNumero   String?
@@ -97,8 +114,10 @@ model Lote {
   gastos      Gasto[]
   fotos       Foto[]
   anotaciones Anotacion[]
+  traslados   Traslado[]
 
-  @@index([userId, fecha])
+  @@index([duenoId, fecha])
+  @@index([cuidadorId])
 }
 
 model Animal {
@@ -163,4 +182,26 @@ model Anotacion {
   @@index([loteId])
   @@index([animalId])
   @@index([gastoId])
+}
+
+// Traspaso de un rol (dueño o cuidador) de un lote a otro usuario.
+// Queda PENDIENTE hasta que el destinatario lo acepte; recién ahí el lote
+// cambia de dueño/cuidador. Da control real al que recibe el ganado.
+model Traslado {
+  id           String         @id @default(cuid())
+  loteId       String
+  lote         Lote           @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  rol          TrasladoRol
+  paraUserId   String
+  para         User           @relation("TrasladoPara", fields: [paraUserId], references: [id], onDelete: Cascade)
+  creadoPorId  String
+  creadoPor    User           @relation("TrasladoCreadoPor", fields: [creadoPorId], references: [id], onDelete: Cascade)
+  estado       TrasladoEstado @default(PENDIENTE)
+  mensaje      String?
+  createdAt    DateTime       @default(now())
+  respondidoAt DateTime?
+
+  @@index([loteId])
+  @@index([paraUserId])
+  @@index([creadoPorId])
 }
