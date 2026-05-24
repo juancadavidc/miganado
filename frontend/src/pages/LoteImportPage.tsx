@@ -1,8 +1,8 @@
-import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, AlertCircle, Sparkles, Trash2, Plus, ImageIcon } from 'lucide-react';
 import { api, ApiError } from '../api/client';
-import type { Sexo, Lote } from '../types';
+import type { Sexo, Lote, Finca } from '../types';
 
 const SEXOS: Sexo[] = ['VP', 'HV', 'HL', 'ML', 'MC', 'TO'];
 
@@ -77,6 +77,17 @@ export function LoteImportPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [fincas, setFincas] = useState<Finca[]>([]);
+  const [fincaId, setFincaId] = useState('');
+
+  useEffect(() => {
+    api<{ fincas: Finca[] }>('/api/fincas')
+      .then((d) => {
+        setFincas(d.fincas);
+        if (d.fincas[0]) setFincaId((cur) => cur || d.fincas[0].id);
+      })
+      .catch(() => { /* el aviso de crear finca aparece en el selector */ });
+  }, []);
 
   async function extractFromFile(file: File) {
     setError(null);
@@ -142,12 +153,13 @@ export function LoteImportPage() {
   }
 
   async function onSave() {
+    if (!fincaId) { setError('Elegí la finca de destino'); return; }
     setError(null);
     setSaving(true);
     try {
       await api<{ lotes: Lote[] }>('/api/lotes/bulk', {
         method: 'POST',
-        body: { lotes: rows },
+        body: { fincaId, lotes: rows },
       });
       navigate('/');
     } catch (err) {
@@ -170,6 +182,19 @@ export function LoteImportPage() {
           </div>
         </div>
       </header>
+
+      <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label htmlFor="import-finca">Finca de destino</label>
+          <select id="import-finca" value={fincaId} onChange={(e) => setFincaId(e.target.value)}>
+            {fincas.length === 0 && <option value="">— no tenés fincas —</option>}
+            {fincas.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}
+          </select>
+          {fincas.length === 0 && (
+            <div className="helper">Creá una finca primero en <Link to="/fincas">Fincas</Link>.</div>
+          )}
+        </div>
+      </div>
 
       {!imageUrl && (
         <div
@@ -298,7 +323,7 @@ export function LoteImportPage() {
       {rows.length > 0 && (
         <div className="sticky-actions">
           <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>Cancelar</button>
-          <button type="button" disabled={saving} onClick={onSave}>
+          <button type="button" disabled={saving || !fincaId} onClick={onSave}>
             {saving ? 'Creando…' : `Crear ${rows.length} ${rows.length === 1 ? 'lote' : 'lotes'}`}
           </button>
         </div>

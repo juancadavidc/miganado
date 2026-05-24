@@ -1,13 +1,15 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   Plus, Fence, Sprout, Beef, Clock, Pencil, Trash2, AlertCircle, X, Map, LayoutList, ArrowLeft,
+  Users, UserPlus, ArrowLeftRight,
 } from 'lucide-react';
 import { api, ApiError } from '../api/client';
-import type { Finca, Potrero } from '../types';
+import type { Finca, Potrero, Traslado } from '../types';
 import { diasDesde, fmtDias, fmtDate } from '../lib/format';
 import { useConfirm } from '../components/ConfirmDialog';
 import { PotreroMapa, type GridCoords } from '../components/PotreroMapa';
+import { useAuth } from '../auth/AuthContext';
 
 type ModalState =
   | { open: false }
@@ -28,6 +30,8 @@ const META_SUGERENCIAS = [
 
 export function FincaDetallePage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const meId = user?.id;
   const [finca, setFinca] = useState<Finca | null>(null);
   const [potreros, setPotreros] = useState<Potrero[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +57,16 @@ export function FincaDetallePage() {
         else setError(err instanceof ApiError ? err.message : 'Error');
       })
       .finally(() => setLoading(false));
+  }, [id]);
+
+  const recargarFinca = useCallback(async () => {
+    if (!id) return;
+    try {
+      const f = await api<{ finca: Finca }>(`/api/fincas/${id}`);
+      setFinca(f.finca);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error');
+    }
   }, [id]);
 
   function upsert(p: Potrero) {
@@ -158,6 +172,10 @@ export function FincaDetallePage() {
           <AlertCircle size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />
           {error}
         </div>
+      )}
+
+      {finca && (
+        <SeccionPropiedadFinca finca={finca} meId={meId} onChange={recargarFinca} ask={ask} />
       )}
 
       {loading || !finca ? (
@@ -295,6 +313,229 @@ export function FincaDetallePage() {
       )}
       {dialog}
     </div>
+  );
+}
+
+type Asker = ReturnType<typeof useConfirm>['ask'];
+
+function Persona({ rol, persona, meId, nota }: {
+  rol: string;
+  persona?: { id: string; nombre: string; documento: string } | null;
+  meId?: string;
+  nota?: string;
+}) {
+  return (
+    <div>
+      <div className="label-cap">{rol}</div>
+      {persona ? (
+        <>
+          <div style={{ fontWeight: 600 }}>
+            {persona.nombre}
+            {persona.id === meId && <span className="muted" style={{ fontWeight: 400 }}> (vos)</span>}
+          </div>
+          <div className="muted" style={{ fontSize: '0.8rem' }}>Doc. {persona.documento}{nota ? ` · ${nota}` : ''}</div>
+        </>
+      ) : (
+        <div className="muted">— sin asignar —</div>
+      )}
+    </div>
+  );
+}
+
+function SeccionPropiedadFinca({ finca, meId, onChange, ask }: {
+  finca: Finca; meId?: string; onChange: () => void; ask: Asker;
+}) {
+  const [accion, setAccion] = useState<'cuidador' | 'dueno' | null>(null);
+  const [documento, setDocumento] = useState('');
+  const [mensaje, setMensaje] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const esDueno = finca.dueno?.id === meId;
+  const traslados = finca.traslados ?? [];
+  const pendienteCuidador = traslados.find((t) => t.rol === 'CUIDADOR' && t.estado === 'PENDIENTE');
+  const pendienteDueno = traslados.find((t) => t.rol === 'DUENO' && t.estado === 'PENDIENTE');
+  const cuidadorEsDueno = !!finca.cuidador && finca.cuidador.id === finca.dueno?.id;
+
+  function reset() { setAccion(null); setDocumento(''); setMensaje(''); setError(null); }
+
+  async function enviar(e: FormEvent) {
+    e.preventDefault();
+    if (!accion) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const path = accion === 'cuidador' ? `/api/fincas/${finca.id}/cuidador` : `/api/fincas/${finca.id}/dueno`;
+      await api(path, { method: 'POST', body: { documento: documento.trim(), mensaje: mensaje.trim() || null } });
+      reset();
+      onChange();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function quitarCuidador() {
+    const ok = await ask({
+      title: '¿Quitar al cuidador?',
+      description: 'La finca quedará sin cuidador asignado. Podés volver a asignar uno cuando quieras.',
+      confirmLabel: 'Quitar',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    setError(null);
+    try {
+      await api(`/api/fincas/${finca.id}/cuidador`, { method: 'DELETE' });
+      onChange();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error');
+    }
+  }
+
+  async function cancelar(t: Traslado) {
+    setError(null);
+    try {
+      await api(`/api/traslados/${t.id}/cancelar`, { method: 'POST' });
+      onChange();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error');
+    }
+  }
+
+  return (
+    <section className="card" style={{ marginBottom: 'var(--space-4)' }}>
+      <div className="row-between" style={{ marginBottom: 'var(--space-3)' }}>
+        <h2 className="row" style={{ gap: 'var(--space-2)' }}>
+          <Users size={18} aria-hidden="true" />
+          Propiedad y cuidado
+        </h2>
+      </div>
+
+      <div className="grid-3" style={{ gap: 'var(--space-3)' }}>
+        <Persona rol="Dueño" persona={finca.dueno} meId={meId} />
+        <Persona
+          rol="Cuidador"
+          persona={finca.cuidador}
+          meId={meId}
+          nota={cuidadorEsDueno ? 'el mismo dueño' : undefined}
+        />
+      </div>
+
+      {pendienteCuidador && (
+        <div className="callout warn row-between" style={{ marginTop: 'var(--space-3)' }}>
+          <span className="row" style={{ gap: 'var(--space-2)' }}>
+            <Clock size={14} aria-hidden="true" />
+            Cuidador pendiente: <strong>{pendienteCuidador.para?.nombre}</strong> — esperando que acepte.
+          </span>
+          {esDueno && (
+            <button type="button" className="btn-ghost btn-sm" onClick={() => cancelar(pendienteCuidador)}>
+              Cancelar
+            </button>
+          )}
+        </div>
+      )}
+
+      {pendienteDueno && (
+        <div className="callout warn row-between" style={{ marginTop: 'var(--space-3)' }}>
+          <span className="row" style={{ gap: 'var(--space-2)' }}>
+            <Clock size={14} aria-hidden="true" />
+            Traspaso de propiedad pendiente: a <strong>{pendienteDueno.para?.nombre}</strong> — esperando que acepte.
+          </span>
+          {esDueno && (
+            <button type="button" className="btn-ghost btn-sm" onClick={() => cancelar(pendienteDueno)}>
+              Cancelar
+            </button>
+          )}
+        </div>
+      )}
+
+      {error && (
+        <div className="error" role="alert" style={{ marginTop: 'var(--space-3)' }}>
+          <AlertCircle size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} /> {error}
+        </div>
+      )}
+
+      {esDueno ? (
+        <>
+          <div className="row" style={{ gap: 'var(--space-2)', marginTop: 'var(--space-3)', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={accion === 'cuidador' ? 'btn-secondary' : ''}
+              onClick={() => { setAccion((a) => (a === 'cuidador' ? null : 'cuidador')); setError(null); }}
+            >
+              <UserPlus size={16} aria-hidden="true" />
+              {finca.cuidador ? 'Cambiar cuidador' : 'Asignar cuidador'}
+            </button>
+            {finca.cuidador && !cuidadorEsDueno && (
+              <button type="button" className="btn-secondary" onClick={quitarCuidador}>
+                Quitar cuidador
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => { setAccion((a) => (a === 'dueno' ? null : 'dueno')); setError(null); }}
+            >
+              <ArrowLeftRight size={16} aria-hidden="true" />
+              Transferir propiedad
+            </button>
+          </div>
+
+          {accion && (
+            <form
+              onSubmit={enviar}
+              style={{
+                background: 'var(--color-surface-2)',
+                padding: 'var(--space-3)',
+                borderRadius: 'var(--radius-lg)',
+                marginTop: 'var(--space-3)',
+              }}
+            >
+              <div className="field">
+                <label htmlFor="finca-prop-doc">
+                  Documento {accion === 'cuidador' ? 'del cuidador' : 'del nuevo dueño'}
+                </label>
+                <input
+                  id="finca-prop-doc"
+                  type="text"
+                  value={documento}
+                  onChange={(e) => setDocumento(e.target.value)}
+                  required
+                  placeholder="ej. 1234"
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="finca-prop-msg">Mensaje (opcional)</label>
+                <input
+                  id="finca-prop-msg"
+                  type="text"
+                  value={mensaje}
+                  onChange={(e) => setMensaje(e.target.value)}
+                  placeholder="ej. Te dejo la finca a cargo"
+                />
+              </div>
+              <p className="muted" style={{ fontSize: '0.8rem', margin: '0 0 var(--space-2)' }}>
+                {accion === 'cuidador'
+                  ? 'El cuidador deberá aceptar la asignación para tomar el control de la finca y sus lotes.'
+                  : 'El nuevo dueño deberá aceptar para recibir la finca. Hasta entonces seguís siendo el dueño.'}
+              </p>
+              <div className="row" style={{ justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
+                <button type="button" className="btn-secondary" onClick={reset}>Cancelar</button>
+                <button type="submit" disabled={loading}>
+                  {loading ? 'Enviando…' : accion === 'cuidador' ? 'Enviar asignación' : 'Enviar traspaso'}
+                </button>
+              </div>
+            </form>
+          )}
+        </>
+      ) : (
+        <p className="muted" style={{ marginTop: 'var(--space-3)' }}>
+          Cuidás esta finca. Podés registrar el día a día (potreros, lotes, pesos, gastos, anotaciones).
+          Los valores comerciales y la asignación de roles los maneja el dueño.
+        </p>
+      )}
+    </section>
   );
 }
 

@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Sparkles, AlertCircle, Upload } from 'lucide-react';
 import { api, ApiError } from '../api/client';
-import type { Sexo, Lote } from '../types';
+import type { Sexo, Lote, Finca } from '../types';
 import { SEXO_LABELS } from '../types';
 
 const SEXOS: Sexo[] = ['VP', 'HV', 'HL', 'ML', 'MC', 'TO'];
@@ -12,6 +12,7 @@ export function LoteFormPage() {
   const today = new Date().toISOString().slice(0, 10);
 
   const [form, setForm] = useState({
+    fincaId: '',
     fecha: today,
     numeroFeria: '',
     loteNumero: '',
@@ -28,8 +29,18 @@ export function LoteFormPage() {
     criasHembra: 0,
     notas: '',
   });
+  const [fincas, setFincas] = useState<Finca[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    api<{ fincas: Finca[] }>('/api/fincas')
+      .then((d) => {
+        setFincas(d.fincas);
+        if (d.fincas[0]) setForm((f) => (f.fincaId ? f : { ...f, fincaId: d.fincas[0].id }));
+      })
+      .catch(() => { /* el form muestra el aviso de crear finca */ });
+  }, []);
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => {
@@ -98,6 +109,16 @@ export function LoteFormPage() {
       <form onSubmit={onSubmit} className="card">
         <div className="form-section">
           <div className="form-section-title">Datos generales</div>
+          <div className="field">
+            <label htmlFor="finca">Finca</label>
+            <select id="finca" value={form.fincaId} onChange={(e) => update('fincaId', e.target.value)} required>
+              {fincas.length === 0 && <option value="">— no tenés fincas —</option>}
+              {fincas.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}
+            </select>
+            {fincas.length === 0 && (
+              <div className="helper">Creá una finca primero en <Link to="/fincas">Fincas</Link>.</div>
+            )}
+          </div>
           <div className="grid-3">
             <div className="field">
               <label htmlFor="fecha">Fecha</label>
@@ -212,7 +233,7 @@ export function LoteFormPage() {
 
         <div className="sticky-actions">
           <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>Cancelar</button>
-          <button type="submit" disabled={loading}>{loading ? 'Guardando…' : 'Guardar lote'}</button>
+          <button type="submit" disabled={loading || !form.fincaId}>{loading ? 'Guardando…' : 'Guardar lote'}</button>
         </div>
       </form>
     </div>

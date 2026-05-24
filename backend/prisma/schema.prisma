@@ -22,8 +22,8 @@ enum CriaSexo {
 }
 
 enum TrasladoRol {
-  DUENO    // se transfiere la propiedad del lote
-  CUIDADOR // se asigna el cuidado del lote
+  DUENO    // se transfiere la propiedad de la finca
+  CUIDADOR // se asigna el cuidado de la finca
 }
 
 enum TrasladoEstado {
@@ -41,32 +41,35 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  lotesPropios       Lote[]     @relation("LoteDueno")
-  lotesCuidados      Lote[]     @relation("LoteCuidador")
+  fincasPropias      Finca[]    @relation("FincaDueno")
+  fincasCuidadas     Finca[]    @relation("FincaCuidador")
   trasladosRecibidos Traslado[] @relation("TrasladoPara")
   trasladosCreados   Traslado[] @relation("TrasladoCreadoPor")
-  potreros           Potrero[]
-  fincas             Finca[]
 }
 
+// La finca es la unidad de propiedad: tiene un dueño y (opcional) un cuidador.
+// Todo lo que vive en la finca (potreros y lotes) hereda quién la posee y la cuida.
 model Finca {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String     @id @default(cuid())
+  duenoId     String
+  dueno       User       @relation("FincaDueno", fields: [duenoId], references: [id], onDelete: Cascade)
+  cuidadorId  String?
+  cuidador    User?      @relation("FincaCuidador", fields: [cuidadorId], references: [id], onDelete: SetNull)
   nombre      String
-  capacidad   Int       @default(16) // ancho del mapa en columnas: 16 | 32 | 64
+  capacidad   Int        @default(16) // ancho del mapa en columnas: 16 | 32 | 64
   propiedades Json?
   potreros    Potrero[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  lotes       Lote[]
+  traslados   Traslado[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
-  @@index([userId])
+  @@index([duenoId])
+  @@index([cuidadorId])
 }
 
 model Potrero {
   id           String    @id @default(cuid())
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   fincaId      String
   finca        Finca     @relation(fields: [fincaId], references: [id], onDelete: Cascade)
   nombre       String
@@ -82,16 +85,13 @@ model Potrero {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  @@index([userId])
   @@index([fincaId])
 }
 
 model Lote {
   id           String   @id @default(cuid())
-  duenoId      String
-  dueno        User     @relation("LoteDueno", fields: [duenoId], references: [id], onDelete: Cascade)
-  cuidadorId   String?
-  cuidador     User?    @relation("LoteCuidador", fields: [cuidadorId], references: [id], onDelete: SetNull)
+  fincaId      String
+  finca        Finca    @relation(fields: [fincaId], references: [id], onDelete: Cascade)
   fecha        DateTime
   numeroFeria  String?
   loteNumero   String?
@@ -114,10 +114,8 @@ model Lote {
   gastos      Gasto[]
   fotos       Foto[]
   anotaciones Anotacion[]
-  traslados   Traslado[]
 
-  @@index([duenoId, fecha])
-  @@index([cuidadorId])
+  @@index([fincaId, fecha])
 }
 
 model Animal {
@@ -184,13 +182,13 @@ model Anotacion {
   @@index([gastoId])
 }
 
-// Traspaso de un rol (dueño o cuidador) de un lote a otro usuario.
-// Queda PENDIENTE hasta que el destinatario lo acepte; recién ahí el lote
-// cambia de dueño/cuidador. Da control real al que recibe el ganado.
+// Traspaso de un rol (dueño o cuidador) de una finca a otro usuario.
+// Queda PENDIENTE hasta que el destinatario lo acepte; recién ahí la finca
+// cambia de dueño/cuidador (y con ella todos sus potreros y lotes).
 model Traslado {
   id           String         @id @default(cuid())
-  loteId       String
-  lote         Lote           @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  fincaId      String
+  finca        Finca          @relation(fields: [fincaId], references: [id], onDelete: Cascade)
   rol          TrasladoRol
   paraUserId   String
   para         User           @relation("TrasladoPara", fields: [paraUserId], references: [id], onDelete: Cascade)
@@ -201,7 +199,7 @@ model Traslado {
   createdAt    DateTime       @default(now())
   respondidoAt DateTime?
 
-  @@index([loteId])
+  @@index([fincaId])
   @@index([paraUserId])
   @@index([creadoPorId])
 }

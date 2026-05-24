@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
+import { fincasVisiblesWhere } from '../lib/fincaAccess.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -59,9 +60,9 @@ function normalizeMetadatos(
   return Object.keys(limpio).length > 0 ? limpio : Prisma.DbNull;
 }
 
-// Verifica que la finca exista y pertenezca al usuario. Devuelve la finca o null.
+// Verifica que la finca exista y el usuario tenga acceso (dueño o cuidador).
 async function fincaDelUsuario(fincaId: string, userId: string) {
-  return prisma.finca.findFirst({ where: { id: fincaId, userId } });
+  return prisma.finca.findFirst({ where: { id: fincaId, ...fincasVisiblesWhere(userId) } });
 }
 
 router.get('/', async (req, res) => {
@@ -87,7 +88,6 @@ router.post('/', async (req, res) => {
 
   const potrero = await prisma.potrero.create({
     data: {
-      userId: req.user!.userId,
       fincaId: finca.id,
       nombre: parsed.data.nombre,
       notas: parsed.data.notas ?? null,
@@ -104,7 +104,7 @@ router.put('/:id', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const existing = await prisma.potrero.findFirst({
-    where: { id: req.params.id, userId: req.user!.userId },
+    where: { id: req.params.id, finca: fincasVisiblesWhere(req.user!.userId) },
     include: { finca: true },
   });
   if (!existing) return res.status(404).json({ error: 'Potrero no encontrado' });
@@ -177,7 +177,7 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   const existing = await prisma.potrero.findFirst({
-    where: { id: req.params.id, userId: req.user!.userId },
+    where: { id: req.params.id, finca: fincasVisiblesWhere(req.user!.userId) },
   });
   if (!existing) return res.status(404).json({ error: 'Potrero no encontrado' });
   await prisma.potrero.delete({ where: { id: req.params.id } });

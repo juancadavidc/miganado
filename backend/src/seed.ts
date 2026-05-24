@@ -14,16 +14,24 @@ async function main() {
     create: { documento: DEMO_DOCUMENTO, nombre: DEMO_NOMBRE, passwordHash },
   });
 
-  // Limpiar lotes previos del usuario demo para dejar estado conocido
-  await prisma.lote.deleteMany({ where: { duenoId: user.id } });
+  // Finca demo: el usuario es dueño y cuidador.
+  const fincaExistente = await prisma.finca.findFirst({
+    where: { duenoId: user.id },
+    orderBy: { createdAt: 'asc' },
+  });
+  const finca = fincaExistente ?? (await prisma.finca.create({
+    data: { duenoId: user.id, cuidadorId: user.id, nombre: 'Finca demo', capacidad: 16 },
+  }));
+
+  // Limpiar lotes previos de la finca demo para dejar estado conocido
+  await prisma.lote.deleteMany({ where: { fincaId: finca.id } });
 
   // Datos reales tomados de la planilla "Centro Comercial Ganadero SAS" (14-may-2026)
   const fecha = new Date('2026-05-14T00:00:00.000Z');
 
   const lote1 = await prisma.lote.create({
     data: {
-      duenoId: user.id,
-      cuidadorId: user.id,
+      fincaId: finca.id,
       fecha,
       numeroFeria: '026',
       loteNumero: '199',
@@ -50,8 +58,7 @@ async function main() {
 
   await prisma.lote.create({
     data: {
-      duenoId: user.id,
-      cuidadorId: user.id,
+      fincaId: finca.id,
       fecha,
       numeroFeria: '026',
       loteNumero: '047',
@@ -72,8 +79,7 @@ async function main() {
 
   await prisma.lote.create({
     data: {
-      duenoId: user.id,
-      cuidadorId: user.id,
+      fincaId: finca.id,
       fecha,
       numeroFeria: '026',
       loteNumero: '217',
@@ -91,8 +97,7 @@ async function main() {
 
   await prisma.lote.create({
     data: {
-      duenoId: user.id,
-      cuidadorId: user.id,
+      fincaId: finca.id,
       fecha,
       numeroFeria: '026',
       loteNumero: '039',
@@ -110,8 +115,7 @@ async function main() {
 
   await prisma.lote.create({
     data: {
-      duenoId: user.id,
-      cuidadorId: user.id,
+      fincaId: finca.id,
       fecha,
       numeroFeria: '026',
       loteNumero: '070',
