@@ -1,15 +1,16 @@
 # miganado 🐂
 
-App fullstack para gestionar **ceba de ganado**: el dueño compra ganado, lo pone
-al cuidado de un cuidador en una finca, y registra las **entregas a feria
-comercial** (lotes, animales, gastos y fotos). Incluye mapa de potreros y
-captura de planillas de feria por foto (OCR con IA).
+App fullstack para gestionar **ceba de ganado**: el dueño compra ganado en feria,
+lo pone al cuidado de un cuidador en una finca, y registra el lote (compra,
+animales, gastos y fotos). Incluye mapa de potreros y captura de la **planilla de
+feria** por foto (OCR con IA). Hoy el `Lote` representa la **compra** del ganado;
+la vida en finca (pesajes/GMD) y la venta están en el roadmap.
 
 Inspirada en la planilla **Centro Comercial Ganadero SAS** (Buenavista, Córdoba).
 
 > ¿Hacia dónde va? Mira [`docs/roadmap.md`](docs/roadmap.md) para la priorización
-> de las próximas funcionalidades (compra del lote, pesajes/GMD, rotación de
-> potreros, venta parcial, utilidad real).
+> de las próximas funcionalidades (pesajes/GMD, rotación de potreros, venta en
+> feria, utilidad real).
 
 ## Stack
 
@@ -167,9 +168,11 @@ cd backend && npm run build    # dist/
 - **Potrero** — zona de pastoreo dentro de una finca. Estado *Ocupado* / *En
   descanso* (manual) con fecha, `metadatos` libres (área, tipo de pasto, aforo,
   agua…) y posición/tamaño en el mapa visual (`gridX/Y/W/H`).
-- **Lote** — entrega de ganado a la feria (la unidad principal hoy): fecha, n°
-  feria, n° lote, sexo, cantidad, peso total/promedio, valor final ($/kg), valor
-  total, deducción, referencia, valor a pagar, notas.
+- **Lote** — **compra** de un lote de ganado en feria/subasta (la unidad principal
+  hoy; nace al comprar, antes de cebarlo): fecha, n° feria, n° lote, sexo,
+  cantidad, peso total/promedio, valor final ($/kg), valor total, deducción,
+  referencia, valor a pagar (lo que se paga al comprar), notas. La vida en finca
+  (pesajes/GMD) y la venta aún no se registran — ver `docs/roadmap.md`.
 - **Animal** — animales individuales dentro de un lote, con su propio peso / sexo
   / identificador.
 - **Gasto** — gastos asociados al lote (transporte, comisiones, etc.).
@@ -183,8 +186,9 @@ cd backend && npm run build    # dist/
 ### Roles por finca (dueño vs cuidador)
 
 - **Dueño:** crea/edita/elimina la finca, transfiere propiedad/cuidado, y edita
-  los **valores comerciales** del lote (n° feria, n° lote, valor final/total,
-  deducción, referencia, valor a pagar). Solo el dueño puede eliminar lotes.
+  los **valores comerciales de la compra** del lote (n° feria, n° lote, valor
+  final/total, deducción, referencia, valor a pagar). Solo el dueño puede eliminar
+  lotes.
 - **Cuidador:** hace el trabajo del día — potreros, animales, gastos, fotos,
   anotaciones — y edita los **datos operativos** del lote (fecha, sexo, cantidad,
   peso, notas, crías).
@@ -210,11 +214,12 @@ su cría (M/H).
 
 ## Importar planilla de feria por foto (OCR)
 
-`POST /api/lotes/extract` recibe la **foto de una planilla CXC** y usa Claude
-Vision para extraer la tabla de lotes (fecha, n° feria, n° lote, sexo, cantidad,
-peso, valores…). El frontend (`/lotes/importar`) muestra el resultado en una
-tabla editable, recalcula peso promedio / valor total / valor a pagar, y guarda
-todo en una finca con `POST /api/lotes/bulk`.
+`POST /api/lotes/extract` recibe la **foto de la planilla CXC de la compra**
+("Relación de Cuentas por Cobrar / ENTREGAS - CXC" del centro ganadero) y usa
+Claude Vision para extraer la tabla de lotes (fecha, n° feria, n° lote, sexo,
+cantidad, peso, valores…). El frontend (`/lotes/importar`) muestra el resultado en
+una tabla editable, recalcula peso promedio / valor total / valor a pagar, y
+guarda todo en una finca con `POST /api/lotes/bulk`.
 
 ## Notas
 

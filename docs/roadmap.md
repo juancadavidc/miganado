@@ -1,6 +1,6 @@
 # Roadmap — miganado
 
-> Última actualización: **2026-05-24**.
+> Última actualización: **2026-05-25**.
 > Este documento recoge la revisión de producto y la priorización de las
 > próximas funcionalidades, validada con el stakeholder ganadero (Don Aníbal,
 > ceba en Córdoba) a través del subagente `experto-cuidado-ganado`.
@@ -21,27 +21,36 @@ comprado, se engorda, se vende.
 
 ## Diagnóstico
 
-Hoy la app **solo captura el paso 4** (la venta en feria). El `Lote` nace en la
-venta y los `Animal` solo existen dentro de ese lote de venta. No existe el paso
-1 (la compra) ni los pasos 2–3 (la vida en la finca: pesajes en el tiempo,
-potrero donde está el ganado, sanidad).
+Hoy la app **solo captura el paso 1** (la compra en feria/subasta). El `Lote`
+nace en la compra: la planilla "Relación de Cuentas por Cobrar / ENTREGAS - CXC"
+del centro ganadero registra lo que el ganadero **paga** al comprar (el "valor a
+pagar" sale de su bolsillo). No existen los pasos 2–3 (la vida en la finca:
+pesajes en el tiempo, potrero donde está el ganado, sanidad) ni el paso 4 (la
+venta: todavía no se registra ninguna).
 
-Consecuencia: la app es hoy **un libro de ventas, no un sistema de manejo del
-hato**. No puede decir si el negocio dio o no dio plata, porque no conoce la
-inversión inicial (compra) ni los costos de la ceba.
+Consecuencia: la app es hoy **un libro de compras, no un sistema de manejo del
+hato**. No puede decir si el negocio dio o no dio plata porque, aunque conoce la
+inversión inicial (la compra), le faltan los costos de la ceba y —sobre todo— los
+**ingresos por venta**, que aún no existen en el sistema.
+
+> ⚠️ Deuda de semántica: el código todavía arrastra el supuesto de que el `Lote`
+> es una venta. En particular, el detalle del lote muestra un KPI
+> "**Utilidad = valor a pagar − gastos**" (`LoteDetallePage.tsx`), que solo tiene
+> sentido si "valor a pagar" fuera un ingreso. Como es una compra, ese número no
+> significa nada y hay que quitarlo/arreglarlo al limpiar la semántica.
 
 ## El modelo objetivo: ciclo de vida del lote de ceba
 
-El corazón de la app deja de ser "la entrega a feria" y pasa a ser **"el lote
-que compré y estoy engordando"**, con tres momentos:
+El corazón de la app es **"el lote que compré y estoy engordando"**, con tres
+momentos. Hoy solo existe el primero:
 
 ```
-   COMPRA (subasta)   →    CEBA en la finca    →    VENTA en feria
-   [NUEVO]                 [NUEVO]                  [ya existe]
-   fecha, lugar/subasta,   potrero + rotación,      peso venta, $/kg,
-   proveedor, cantidad,    pesajes → GMD,           deducción, valor;
-   sexo, peso entrada      sanidad, gastos          puede ser PARCIAL
-   (opcional), valor compra
+   COMPRA (feria/subasta)  →   CEBA en la finca    →    VENTA en feria
+   [YA EXISTE]                 [FALTA]                  [FALTA — hoy no existe]
+   fecha, n° feria, n° lote,   potrero + rotación,      peso venta, $/kg,
+   sexo, cantidad, peso,       pesajes → GMD,           deducción, valor;
+   valor $/kg, valor a pagar   sanidad, gastos          puede ser PARCIAL
+   (lo que se paga al comprar)
 ```
 
 Al cerrarse el lote, la app calcula lo que **ninguna planilla del campo da hoy**:
@@ -50,9 +59,9 @@ Al cerrarse el lote, la app calcula lo que **ninguna planilla del campo da hoy**
 ### Decisiones de diseño (validadas con el campo)
 
 - **Se mantiene la palabra "Lote".** Es el vocabulario del campo (subasta, finca
-  y feria lo llaman lote). Se **expande** el `Lote` actual para que tenga compra
-  + vida en finca; lo de hoy queda como el momento de venta. No se inventa una
-  entidad "Grupo".
+  y feria lo llaman lote). El `Lote` actual ya guarda la **compra**; se **expande**
+  para agregarle la vida en finca (pesajes, potrero, sanidad) y la venta. No se
+  inventa una entidad "Grupo".
 - **Manejo por GRUPO, no por orejera.** El cuidador pesa el lote completo y
   registra **una fila: fecha + cantidad + peso total**; la app calcula promedio y
   GMD. El `Animal` individual queda solo para casos especiales (animal enfermo en
@@ -73,49 +82,51 @@ Al cerrarse el lote, la app calcula lo que **ninguna planilla del campo da hoy**
 
 Orden recomendado. Cada paso entrega valor por sí solo y habilita el siguiente.
 
-### 1. Compra / entrada del lote — *mediana*
-Dar nacimiento al lote en la compra, no en la venta: fecha, lugar/subasta,
-proveedor, cantidad, sexo (`ML`/`MC`), peso de entrada (opcional), valor de
-compra ($/kg y/o total). **Es la base de todo el ciclo.** Sin la compra no hay
-inversión inicial, no hay utilidad real, no hay nada.
+> **Punto de partida (ya en la app):** la **compra** del lote. Ese dato ya existe
+> (es la planilla de feria que se importa por OCR). Lo que falta es **limpiar su
+> semántica**: el código y la UI todavía hablan de "venta/entrega a feria" y hay
+> un KPI que calcula "utilidad = valor a pagar − gastos" (válido solo para una
+> venta). Relabelar a compra y arreglar/quitar ese KPI es trabajo de limpieza, no
+> una feature nueva — conviene hacerlo junto con el paso 1.
 
-### 2. Pesajes del grupo en el tiempo + GMD — *mediana*
+### 1. Pesajes del grupo en el tiempo + GMD — *mediana* — **siguiente**
 Tabla sencilla por lote: fecha, cantidad pesada, peso total → la app calcula
 promedio y la **ganancia media diaria (GMD)** entre pesajes consecutivos.
 Registro rápido desde el celular (fecha + peso total, lo demás lo calcula la
-app). **Es lo que el dueño mira para decidir cuándo vender.**
+app). **Es lo que el dueño mira para decidir cuándo vender.** Como la compra ya
+guarda el peso de entrada, el GMD puede arrancar desde la compra.
 
 > Por qué importa: la diferencia entre 600 g/día y 900 g/día de GMD en un lote de
 > 22 novillos, sobre 90 días y a ~8.200 $/kg, vale **más de 4 millones de pesos**.
 > Mostrarle eso al dueño en tiempo real justifica construir bien este módulo.
 
-### 3. Vínculo lote ↔ potrero (con rotaciones) — *mediana*
+### 2. Vínculo lote ↔ potrero (con rotaciones) — *mediana*
 El potrero ya existe; falta el vínculo "este lote está en este potrero" y el
 historial de rotaciones. Corresponde a la **Fase 4 de `docs/potreros-epica.md`**.
-Con el lote ya con ciclo de vida completo, este vínculo cobra todo su sentido:
-el potrero sabe qué lote tiene adentro y por cuánto tiempo → base del semáforo
+El potrero sabe qué lote tiene adentro y por cuánto tiempo → base del semáforo
 de rotación (Fase 3 de esa épica: aforo, días de descanso, alerta de
 sobrepastoreo).
 
-### 4. Venta parcial — *chica/mediana*
-Adaptar el momento de venta para que un lote pueda tener **varias salidas** a
-feria, no solo una. El lote se cierra cuando cantidad vendida = cantidad
-comprada.
+### 3. Venta del lote en feria (puede ser parcial) — *mediana*
+Hoy la venta **no existe** en la app (el `Lote` solo guarda la compra). Hay que
+**construir** el momento de venta: peso de salida, $/kg, deducción, valor. Un lote
+puede tener **varias salidas** (se sacan los más gordos y se deja el resto
+cebando); se cierra cuando cantidad vendida = cantidad comprada.
 
-### 5. Cierre del lote y utilidad real — *chica*
+### 4. Cierre del lote y utilidad real — *chica*
 Al cerrarse el lote, mostrar: **inversión total** (compra + gastos de ceba),
 **ingresos totales** (todas las ventas), **utilidad neta** y **costo por kilo
 producido**. Este es el número que el dueño revisa para saber si le fue bien o
-mal. Reusa datos ya capturados en los pasos 1, 2 y 4.
+mal. Reusa datos ya capturados en la compra, los pesajes y la venta.
 
-### 6. Sanidad — *mediana*
+### 5. Sanidad — *mediana*
 Eventos de sanidad por lote: fecha, tipo (vacuna / desparasitación /
 tratamiento), producto, dosis, quién aplicó, cabezas tratadas. En Córdoba la
 aftosa (abril y octubre) es obligación legal del ICA. Importante para el
 cuidador, pero no es lo que el dueño revisa primero para decidir el negocio →
 va después del núcleo del ciclo. Empezar simple, sin detalle por animal.
 
-### 7. Reportes de rentabilidad por finca y periodo — *chica*
+### 6. Reportes de rentabilidad por finca y periodo — *chica*
 Sobre datos ya capturados: lotes cerrados en un rango de fechas, cabezas,
 ingresos, gastos, utilidad neta. Exportable como **PDF o imagen para compartir
 por WhatsApp/Telegram** con el contador o el socio.
@@ -144,10 +155,10 @@ las alertas (rotación de potrero, vencimiento de vacuna, sugerencia de venta):
 - **Export a Excel con fórmulas/varias pestañas**: nadie lo abre en el campo;
   mejor PDF/imagen para WhatsApp/Telegram.
 - **Más inversión en el mapa visual de potreros**: ya está entregado (Fases 1–2);
-  lo que falta es el dato de rotación (paso 3), no más editor visual.
+  lo que falta es el dato de rotación (paso 2), no más editor visual.
 
 ## Referencias
 
 - Estado actual completo: `README.md`.
 - Visión y fases de potreros: `docs/potreros-epica.md` (Fases 3–4 se materializan
-  en el paso 3 de este roadmap).
+  en el paso 2 de este roadmap).

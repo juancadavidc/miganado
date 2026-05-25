@@ -11,7 +11,7 @@ que el pasto se recupere.
 
 ## Visión
 
-Hoy la app gira alrededor del **Lote** (entrega a la feria). Los potreros agregan
+Hoy la app gira alrededor del **Lote** (la compra en feria). Los potreros agregan
 la dimensión **espacial y temporal** del rancho:
 
 - **Espacial**: dónde está cada potrero y cómo se conectan (mapa).
