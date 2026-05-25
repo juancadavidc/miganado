@@ -114,8 +114,27 @@ model Lote {
   gastos      Gasto[]
   fotos       Foto[]
   anotaciones Anotacion[]
+  pesajes     Pesaje[]
 
   @@index([fincaId, fecha])
+}
+
+// Pesaje del lote completo (manejo por grupo): una fila = fecha + cantidad de
+// cabezas pesadas + peso total. La app calcula promedio por cabeza y la ganancia
+// media diaria (GMD) entre pesajes consecutivos. La cantidad puede diferir de la
+// del lote cuando hubo venta parcial o baja.
+model Pesaje {
+  id        String   @id @default(cuid())
+  loteId    String
+  lote      Lote     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  fecha     DateTime
+  cantidad  Int
+  pesoTotal Decimal  @db.Decimal(12, 2)
+  notas     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([loteId, fecha])
 }
 
 model Animal {
