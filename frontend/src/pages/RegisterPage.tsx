@@ -37,7 +37,7 @@ export function RegisterPage() {
         </div>
         <h1>Crear cuenta</h1>
         <p className="muted" style={{ marginBottom: '1.25rem' }}>
-          Registra tus lotes y entregas a la feria
+          Registra tus lotes y compras en la feria
         </p>
         <form onSubmit={onSubmit} noValidate>
           <div className="field">

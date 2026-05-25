@@ -67,7 +67,7 @@ export function LoteDetallePage() {
   if (!lote) return <div className="container">Lote no encontrado</div>;
 
   const gastosTotal = lote.gastos.reduce((s, g) => s + Number(g.monto), 0);
-  const utilidad = Number(lote.valorAPagar) - gastosTotal;
+  const invertido = Number(lote.valorAPagar) + gastosTotal;
   const meId = user?.id ?? '';
   const esDueno = lote.finca?.dueno?.id === meId;
 
@@ -121,9 +121,9 @@ export function LoteDetallePage() {
           <div className="kpi-sub">Deducción: −{fmtMoney(lote.deduccion)}</div>
         </div>
         <div className="card">
-          <div className="label-cap">A pagar / Utilidad</div>
+          <div className="label-cap">Costo de compra</div>
           <div className="kpi-value" style={{ color: 'var(--color-primary)' }}>{fmtMoney(lote.valorAPagar)}</div>
-          <div className="kpi-sub">Utilidad (− gastos): <strong className="tabnum">{fmtMoney(utilidad)}</strong></div>
+          <div className="kpi-sub">Invertido (+ gastos): <strong className="tabnum">{fmtMoney(invertido)}</strong></div>
         </div>
       </section>
 

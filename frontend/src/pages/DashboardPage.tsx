@@ -58,7 +58,7 @@ export function DashboardPage() {
       <header className="page-header">
         <div>
           <h1>Mis lotes</h1>
-          <p className="subtitle">Entregas registradas a la feria comercial</p>
+          <p className="subtitle">Lotes comprados en la feria comercial</p>
         </div>
         <div className="row" style={{ gap: 'var(--space-2)' }}>
           <Link to="/lotes/importar" className="btn-secondary">
@@ -188,7 +188,7 @@ function EmptyState() {
     <div className="card empty-state">
       <span className="empty-icon"><PackageOpen size={28} /></span>
       <h2>Aún no has registrado lotes</h2>
-      <p>Comienza creando tu primera entrega a la feria.</p>
+      <p>Comienza registrando tu primera compra en la feria.</p>
       <Link to="/lotes/nuevo" className="btn">
         <Plus size={16} aria-hidden="true" />
         Crear el primero

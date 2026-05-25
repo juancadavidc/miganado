@@ -97,7 +97,7 @@ export function LoteFormPage() {
           </button>
           <div>
             <h1>Nuevo lote</h1>
-            <p className="subtitle">Registra una entrega a la feria</p>
+            <p className="subtitle">Registra la compra de un lote en feria</p>
           </div>
         </div>
         <Link to="/lotes/importar" className="btn-secondary">
