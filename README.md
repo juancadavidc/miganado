@@ -3,14 +3,15 @@
 App fullstack para gestionar **ceba de ganado**: el dueño compra ganado en feria,
 lo pone al cuidado de un cuidador en una finca, y registra el lote (compra,
 animales, gastos y fotos). Incluye mapa de potreros y captura de la **planilla de
-feria** por foto (OCR con IA). Hoy el `Lote` representa la **compra** del ganado;
-la vida en finca (pesajes/GMD) y la venta están en el roadmap.
+feria** por foto (OCR con IA). Hoy el `Lote` representa la **compra** del ganado
+y su **ceba en finca** (pesajes en el tiempo → **GMD**); la venta en feria está en
+el roadmap.
 
 Inspirada en la planilla **Centro Comercial Ganadero SAS** (Buenavista, Córdoba).
 
 > ¿Hacia dónde va? Mira [`docs/roadmap.md`](docs/roadmap.md) para la priorización
-> de las próximas funcionalidades (pesajes/GMD, rotación de potreros, venta en
-> feria, utilidad real).
+> de las próximas funcionalidades (rotación de potreros, venta en feria, utilidad
+> real).
 
 ## Stack
 
@@ -31,7 +32,7 @@ miganado/
 │   ├── src/
 │   │   ├── server.ts
 │   │   ├── routes/         # auth, fincas, potreros, lotes, lotesImport,
-│   │   │                   #   animales, gastos, fotos, anotaciones, traslados
+│   │   │                   #   animales, gastos, pesajes, fotos, anotaciones, traslados
 │   │   ├── middleware/auth.ts
 │   │   └── lib/            # prisma, env, r2 (Cloudflare), fincaAccess (permisos)
 │   └── uploads/            # (legado; las fotos hoy van a R2)
@@ -97,7 +98,7 @@ Variables de entorno (ver `backend/.env.example`):
 | PUT  | `/api/potreros/:id`  | editar (nombre, notas, metadatos, ocupado, grid) |
 | DELETE | `/api/potreros/:id`| eliminar potrero |
 | GET  | `/api/lotes`         | listar mis lotes |
-| GET  | `/api/lotes/:id`     | detalle de un lote (animales, gastos, fotos, anotaciones) |
+| GET  | `/api/lotes/:id`     | detalle de un lote (animales, gastos, pesajes, fotos, anotaciones) |
 | POST | `/api/lotes`         | crear lote |
 | PUT  | `/api/lotes/:id`     | editar lote (campos según rol dueño/cuidador) |
 | DELETE | `/api/lotes/:id`   | eliminar lote (solo dueño) |
@@ -108,6 +109,8 @@ Variables de entorno (ver `backend/.env.example`):
 | DELETE | `/api/animales/:id`| eliminar animal |
 | POST | `/api/gastos`        | crear gasto |
 | DELETE | `/api/gastos/:id`  | eliminar gasto |
+| POST | `/api/pesajes`       | registrar pesaje del grupo (fecha, cabezas, peso total) |
+| DELETE | `/api/pesajes/:id` | eliminar pesaje |
 | POST | `/api/fotos`         | subir foto (form-data: `foto`, `loteId` o `animalId`) → R2 |
 | DELETE | `/api/fotos/:id`   | eliminar foto |
 | POST | `/api/anotaciones`   | crear anotación (en `loteId`, `animalId` o `gastoId`) |
@@ -171,8 +174,13 @@ cd backend && npm run build    # dist/
 - **Lote** — **compra** de un lote de ganado en feria/subasta (la unidad principal
   hoy; nace al comprar, antes de cebarlo): fecha, n° feria, n° lote, sexo,
   cantidad, peso total/promedio, valor final ($/kg), valor total, deducción,
-  referencia, valor a pagar (lo que se paga al comprar), notas. La vida en finca
-  (pesajes/GMD) y la venta aún no se registran — ver `docs/roadmap.md`.
+  referencia, valor a pagar (lo que se paga al comprar), notas. Los **pesajes** en
+  el tiempo (→ GMD) ya se registran; la **venta** en feria aún no — ver
+  `docs/roadmap.md`.
+- **Pesaje** — pesaje del lote completo en el tiempo (manejo **por grupo**): fecha,
+  cabezas pesadas y peso total. La app calcula el promedio por cabeza y la
+  **ganancia media diaria (GMD)** entre pesajes consecutivos; si la compra tiene
+  peso de entrada, la GMD arranca desde ahí.
 - **Animal** — animales individuales dentro de un lote, con su propio peso / sexo
   / identificador.
 - **Gasto** — gastos asociados al lote (transporte, comisiones, etc.).

@@ -56,7 +56,7 @@ async function main() {
     ],
   });
 
-  await prisma.lote.create({
+  const loteCeba = await prisma.lote.create({
     data: {
       fincaId: finca.id,
       fecha,
@@ -75,6 +75,15 @@ async function main() {
         create: [{ descripcion: 'Transporte camión', monto: 150000 }],
       },
     },
+  });
+
+  // Pesajes en finca del lote de ceba: la GMD arranca desde el peso de compra
+  // (474 kg el 14-may). ~800 g/día el primer mes, ~900 g/día el segundo.
+  await prisma.pesaje.createMany({
+    data: [
+      { loteId: loteCeba.id, fecha: new Date('2026-06-13T00:00:00.000Z'), cantidad: 1, pesoTotal: 498, notas: 'Con ayuno, báscula del corral' },
+      { loteId: loteCeba.id, fecha: new Date('2026-07-13T00:00:00.000Z'), cantidad: 1, pesoTotal: 525, notas: 'Con ayuno' },
+    ],
   });
 
   await prisma.lote.create({

@@ -77,6 +77,7 @@ router.get('/:id', async (req, res) => {
         orderBy: { fecha: 'desc' },
         include: { anotaciones: { orderBy: { createdAt: 'desc' } } },
       },
+      pesajes: { orderBy: { fecha: 'asc' } },
       fotos: { where: { animalId: null }, orderBy: { createdAt: 'desc' } },
       anotaciones: { orderBy: { createdAt: 'desc' } },
     },

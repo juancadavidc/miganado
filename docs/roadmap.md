@@ -21,12 +21,12 @@ comprado, se engorda, se vende.
 
 ## Diagnóstico
 
-Hoy la app **solo captura el paso 1** (la compra en feria/subasta). El `Lote`
-nace en la compra: la planilla "Relación de Cuentas por Cobrar / ENTREGAS - CXC"
-del centro ganadero registra lo que el ganadero **paga** al comprar (el "valor a
-pagar" sale de su bolsillo). No existen los pasos 2–3 (la vida en la finca:
-pesajes en el tiempo, potrero donde está el ganado, sanidad) ni el paso 4 (la
-venta: todavía no se registra ninguna).
+Hoy la app captura el paso 1 (la compra en feria/subasta) y, del paso 3, los
+**pesajes en el tiempo → GMD**. El `Lote` nace en la compra: la planilla
+"Relación de Cuentas por Cobrar / ENTREGAS - CXC" del centro ganadero registra lo
+que el ganadero **paga** al comprar (el "valor a pagar" sale de su bolsillo). Del
+resto de la vida en finca falta el **potrero donde está el ganado** y la
+**sanidad**; y falta el paso 4 (la **venta**: todavía no se registra ninguna).
 
 Consecuencia: la app es hoy **un libro de compras, no un sistema de manejo del
 hato**. No puede decir si el negocio dio o no dio plata porque, aunque conoce la
@@ -42,14 +42,14 @@ inversión inicial (la compra), le faltan los costos de la ceba y —sobre todo�
 ## El modelo objetivo: ciclo de vida del lote de ceba
 
 El corazón de la app es **"el lote que compré y estoy engordando"**, con tres
-momentos. Hoy solo existe el primero:
+momentos. Hoy existen el primero (la compra) y, del segundo, los **pesajes → GMD**:
 
 ```
    COMPRA (feria/subasta)  →   CEBA en la finca    →    VENTA en feria
-   [YA EXISTE]                 [FALTA]                  [FALTA — hoy no existe]
-   fecha, n° feria, n° lote,   potrero + rotación,      peso venta, $/kg,
-   sexo, cantidad, peso,       pesajes → GMD,           deducción, valor;
-   valor $/kg, valor a pagar   sanidad, gastos          puede ser PARCIAL
+   [YA EXISTE]                 [EN CURSO]               [FALTA — hoy no existe]
+   fecha, n° feria, n° lote,   pesajes → GMD ✅,        peso venta, $/kg,
+   sexo, cantidad, peso,       potrero + rotación,      deducción, valor;
+   valor $/kg, valor a pagar   sanidad, gastos [FALTA]  puede ser PARCIAL
    (lo que se paga al comprar)
 ```
 
@@ -89,18 +89,25 @@ Orden recomendado. Cada paso entrega valor por sí solo y habilita el siguiente.
 > venta). Relabelar a compra y arreglar/quitar ese KPI es trabajo de limpieza, no
 > una feature nueva — conviene hacerlo junto con el paso 1.
 
-### 1. Pesajes del grupo en el tiempo + GMD — *mediana* — **siguiente**
+### 1. Pesajes del grupo en el tiempo + GMD — *mediana* — ✅ **HECHO**
 Tabla sencilla por lote: fecha, cantidad pesada, peso total → la app calcula
-promedio y la **ganancia media diaria (GMD)** entre pesajes consecutivos.
-Registro rápido desde el celular (fecha + peso total, lo demás lo calcula la
-app). **Es lo que el dueño mira para decidir cuándo vender.** Como la compra ya
-guarda el peso de entrada, el GMD puede arrancar desde la compra.
+promedio por cabeza y la **ganancia media diaria (GMD)** entre pesajes
+consecutivos. Registro rápido desde el celular (fecha + peso total, la cantidad
+viene precargada). Como la compra guarda el peso de entrada, la GMD arranca desde
+la compra cuando existe; si no, desde el primer pesaje en finca.
+
+Entregado (modelo `Pesaje`, endpoints `POST/DELETE /api/pesajes`, sección
+"Pesajes y GMD" en el detalle del lote). Validado con el campo: el número grande
+son los **kilos ganados** por cabeza y el **peso promedio actual**; la GMD en
+g/día queda como dato de apoyo. Se avisa de pesar siempre en las mismas
+condiciones (ayuno) y se marca cuando un pesaje tiene cantidad distinta a la del
+lote (venta parcial o baja).
 
 > Por qué importa: la diferencia entre 600 g/día y 900 g/día de GMD en un lote de
 > 22 novillos, sobre 90 días y a ~8.200 $/kg, vale **más de 4 millones de pesos**.
 > Mostrarle eso al dueño en tiempo real justifica construir bien este módulo.
 
-### 2. Vínculo lote ↔ potrero (con rotaciones) — *mediana*
+### 2. Vínculo lote ↔ potrero (con rotaciones) — *mediana* — **siguiente**
 El potrero ya existe; falta el vínculo "este lote está en este potrero" y el
 historial de rotaciones. Corresponde a la **Fase 4 de `docs/potreros-epica.md`**.
 El potrero sabe qué lote tiene adentro y por cuánto tiempo → base del semáforo

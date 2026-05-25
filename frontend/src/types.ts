@@ -165,9 +165,20 @@ export type Foto = {
   url: string;
 };
 
+export type Pesaje = {
+  id: string;
+  loteId: string;
+  fecha: string;
+  cantidad: number;
+  pesoTotal: string;
+  notas: string | null;
+  createdAt: string;
+};
+
 export type LoteDetalle = Lote & {
   animales: Animal[];
   gastos: Gasto[];
   fotos: Foto[];
   anotaciones: Anotacion[];
+  pesajes: Pesaje[];
 };

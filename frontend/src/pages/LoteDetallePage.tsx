@@ -3,11 +3,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Trash2, Plus, X, Upload, Camera, ImageOff,
   AlertCircle, Receipt, ListOrdered, Calendar, MessageSquare, Users,
+  Scale, Info,
 } from 'lucide-react';
 import { api, ApiError } from '../api/client';
 import type { Animal, CriaSexo, Foto, Gasto, LoteDetalle, Sexo } from '../types';
 import { CRIA_SEXO_LABELS, SEXO_LABELS } from '../types';
-import { fmtDate, fmtMoney, fmtNum } from '../lib/format';
+import { fmtDate, fmtMoney, fmtNum, fmtDias, toInputDate } from '../lib/format';
+import { calcularPesajes } from '../lib/pesajes';
 import { SexoBadge } from '../components/SexoBadge';
 import { useConfirm } from '../components/ConfirmDialog';
 import { Anotaciones } from '../components/Anotaciones';
@@ -128,6 +130,7 @@ export function LoteDetallePage() {
       </section>
 
       <SeccionPropiedad lote={lote} meId={meId} />
+      <SeccionPesajes lote={lote} onChange={cargar} ask={ask} />
       <SeccionFotos lote={lote} onChange={cargar} ask={ask} />
       <SeccionAnotacionesLote lote={lote} onChange={cargar} />
       <SeccionAnimales lote={lote} onChange={cargar} ask={ask} />
@@ -217,6 +220,227 @@ function SeccionAnotacionesLote({ lote, onChange }: { lote: LoteDetalle; onChang
         onChange={onChange}
       />
     </section>
+  );
+}
+
+function fmtGanancia(kg: number | null): string {
+  if (kg === null) return '—';
+  const signo = kg > 0 ? '+' : '';
+  return `${signo}${fmtNum(kg, 1)} kg`;
+}
+
+function fmtGmd(gramosDia: number | null): string {
+  if (gramosDia === null) return '—';
+  const signo = gramosDia > 0 ? '+' : '';
+  return `${signo}${fmtNum(gramosDia, 0)} g/día`;
+}
+
+function colorGanancia(kg: number | null): string | undefined {
+  if (kg === null || kg === 0) return undefined;
+  return kg > 0 ? 'var(--color-primary)' : 'var(--color-danger)';
+}
+
+function SeccionPesajes({ lote, onChange, ask }: { lote: LoteDetalle; onChange: () => void; ask: Asker }) {
+  const resumen = calcularPesajes(lote, lote.pesajes);
+  const hayPesajes = lote.pesajes.length > 0;
+
+  async function onDelete(id: string) {
+    const ok = await ask({
+      title: '¿Eliminar este pesaje?',
+      description: 'Se recalculará la GMD del lote. No se podrá recuperar.',
+      confirmLabel: 'Eliminar',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    await api(`/api/pesajes/${id}`, { method: 'DELETE' });
+    onChange();
+  }
+
+  return (
+    <section className="card" style={{ marginBottom: 'var(--space-4)' }}>
+      <div className="row-between" style={{ marginBottom: 'var(--space-3)' }}>
+        <h2 className="row" style={{ gap: 'var(--space-2)' }}>
+          <Scale size={18} aria-hidden="true" />
+          Pesajes y GMD
+          <span className="muted tabnum">({lote.pesajes.length})</span>
+        </h2>
+      </div>
+
+      {hayPesajes && (
+        <div className="grid-3" style={{ marginBottom: 'var(--space-3)' }}>
+          <div className="tile">
+            <div className="label-cap">Peso promedio actual</div>
+            <div className="kpi-value">{fmtNum(resumen.ultimoPromedio, 1)} kg</div>
+            <div className="kpi-sub">por cabeza</div>
+          </div>
+          <div className="tile">
+            <div className="label-cap">
+              {resumen.baseDesdeCompra ? 'Ganancia desde la compra' : 'Ganancia desde el 1er pesaje'}
+            </div>
+            <div className="kpi-value" style={{ color: colorGanancia(resumen.kgGanadosDesdeInicio) }}>
+              {fmtGanancia(resumen.kgGanadosDesdeInicio)}
+            </div>
+            <div className="kpi-sub">por cabeza</div>
+          </div>
+          <div className="tile">
+            <div className="label-cap">GMD promedio</div>
+            <div className="kpi-value">{fmtGmd(resumen.gmdGlobal)}</div>
+            <div className="kpi-sub">ganancia media diaria</div>
+          </div>
+        </div>
+      )}
+
+      <PesajeForm loteId={lote.id} defaultCantidad={lote.cantidad} onDone={onChange} />
+
+      <div className="callout row" style={{ gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
+        <Info size={15} aria-hidden="true" style={{ flexShrink: 0 }} />
+        <span>Para que la GMD sea confiable, pesá siempre en las mismas condiciones (ej. con ayuno) y a la misma hora.</span>
+      </div>
+
+      {!hayPesajes ? (
+        <p className="muted" style={{ marginTop: 'var(--space-3)' }}>
+          {resumen.baseDesdeCompra
+            ? 'Sin pesajes en finca. Al registrar el primero, la GMD se calcula desde el peso de compra.'
+            : 'Sin pesajes registrados. Registrá al menos dos para empezar a ver la GMD.'}
+        </p>
+      ) : (
+        <div style={{ overflowX: 'auto', marginTop: 'var(--space-3)' }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th className="num">Cabezas</th>
+                <th className="num">Peso total</th>
+                <th className="num">Promedio/cab</th>
+                <th className="num">Ganancia</th>
+                <th>Nota</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {resumen.filas.map((f) => (
+                <tr key={f.id ?? 'compra'}>
+                  <td>
+                    {fmtDate(f.fecha)}
+                    {f.esCompra && (
+                      <span className="badge" style={{ marginLeft: 6, background: 'var(--color-surface-2)', color: 'var(--color-text-muted)' }}>
+                        compra
+                      </span>
+                    )}
+                  </td>
+                  <td className="num">
+                    {f.cantidad}
+                    {!f.esCompra && f.cantidad !== lote.cantidad && (
+                      <span className="muted" style={{ marginLeft: 4, fontSize: '0.7rem' }} title="Distinta a la cantidad del lote (venta parcial o baja)">
+                        ≠ {lote.cantidad}
+                      </span>
+                    )}
+                  </td>
+                  <td className="num">{fmtNum(f.pesoTotal)} kg</td>
+                  <td className="num tabnum">{fmtNum(f.pesoPromedio, 1)} kg</td>
+                  <td className="num">
+                    {f.esCompra ? (
+                      <span className="muted">—</span>
+                    ) : (
+                      <>
+                        <span style={{ color: colorGanancia(f.kgGanados), fontWeight: 600 }}>
+                          {fmtGanancia(f.kgGanados)}
+                        </span>
+                        <div className="kpi-sub tabnum">
+                          {fmtGmd(f.gmdGramosDia)}
+                          {f.diasDesdeAnterior !== null && ` · ${fmtDias(f.diasDesdeAnterior)}`}
+                        </div>
+                      </>
+                    )}
+                  </td>
+                  <td>{f.notas ?? <span className="muted">—</span>}</td>
+                  <td>
+                    {!f.esCompra && f.id && (
+                      <button
+                        type="button"
+                        className="btn-danger btn-icon btn-sm"
+                        onClick={() => onDelete(f.id!)}
+                        aria-label="Eliminar pesaje"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PesajeForm({ loteId, defaultCantidad, onDone }: { loteId: string; defaultCantidad: number; onDone: () => void }) {
+  const [fecha, setFecha] = useState(() => toInputDate(new Date().toISOString()));
+  const [cantidad, setCantidad] = useState(String(defaultCantidad));
+  const [pesoTotal, setPesoTotal] = useState('');
+  const [notas, setNotas] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      await api('/api/pesajes', {
+        method: 'POST',
+        body: {
+          loteId,
+          fecha,
+          cantidad: Number(cantidad),
+          pesoTotal: Number(pesoTotal),
+          notas: notas || null,
+        },
+      });
+      setPesoTotal('');
+      setNotas('');
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit}>
+      <div className="grid-3">
+        <div className="field">
+          <label htmlFor="pesaje-fecha">Fecha</label>
+          <input id="pesaje-fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
+        </div>
+        <div className="field">
+          <label htmlFor="pesaje-cantidad">Cabezas pesadas</label>
+          <input id="pesaje-cantidad" type="number" min={1} step={1} value={cantidad} onChange={(e) => setCantidad(e.target.value)} required />
+        </div>
+        <div className="field">
+          <label htmlFor="pesaje-peso">Peso total (kg)</label>
+          <input id="pesaje-peso" type="number" step="0.01" min={0} value={pesoTotal} onChange={(e) => setPesoTotal(e.target.value)} required placeholder="ej. 9800" />
+        </div>
+      </div>
+      <div className="field">
+        <label htmlFor="pesaje-notas">Nota (opcional)</label>
+        <input id="pesaje-notas" type="text" value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="ej. con ayuno, báscula del corral" />
+      </div>
+      {error && (
+        <div className="error" role="alert">
+          <AlertCircle size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} /> {error}
+        </div>
+      )}
+      <div className="row" style={{ justifyContent: 'flex-end' }}>
+        <button type="submit" disabled={loading}>
+          <Plus size={16} aria-hidden="true" />
+          {loading ? 'Guardando…' : 'Registrar pesaje'}
+        </button>
+      </div>
+    </form>
   );
 }
 
