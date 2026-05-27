@@ -30,6 +30,29 @@ Cuando agregues, cambies o quites una funcionalidad, actualiza la documentacion
 Regla simple: si un cambio haria que el README mienta, el cambio no esta completo
 hasta arreglar el README.
 
+## Migraciones Prisma → NO reescribas la historia
+
+Las migraciones de `backend/prisma/migrations/` son **append-only** una vez que
+salieron de tu rama local. NO edites, renombres, ni borres una migracion que ya
+esta en `main` o que pudo haber corrido en cualquier entorno (prod, staging,
+dev compartido). Aunque cambie tu idea sobre el modelo, esa migracion ya forma
+parte de la historia ejecutada en alguna DB — borrarla del repo crea drift
+imposible de reconciliar automaticamente (Prisma marcara `_prisma_migrations`
+filas huerfanas y las nuevas migraciones pueden chocar con objetos que ya
+existen, e.g. `CREATE TYPE` sobre un enum ya creado → P3009).
+
+Si necesitas cambiar el modelo:
+
+- Crea una **nueva** migracion encima que lleve del estado anterior al nuevo
+  (`ALTER`, backfill, `DROP`). Es codigo extra pero es la unica forma segura.
+- Nunca consolides varias migraciones en una "limpia" reemplazando archivos.
+- Si vas a tocar una migracion que aun NO se ha mergeado y nadie mas la corrio,
+  confirma con el usuario que esta seguro de que ningun entorno la aplico.
+
+Regla simple: si tu cambio implica borrar o reescribir un archivo bajo
+`backend/prisma/migrations/`, **detente y confirma con el usuario** antes de
+hacerlo. Casi siempre la respuesta correcta es agregar una migracion nueva.
+
 ## Opinion de negocio/dominio → usa el subagente `experto-cuidado-ganado`
 
 Cuando el usuario haga cambios o agregue funcionalidades del dominio (lotes,
