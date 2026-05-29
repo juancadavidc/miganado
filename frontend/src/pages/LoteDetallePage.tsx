@@ -13,6 +13,7 @@ import { calcularPesajes } from '../lib/pesajes';
 import { SexoBadge } from '../components/SexoBadge';
 import { useConfirm } from '../components/ConfirmDialog';
 import { Anotaciones } from '../components/Anotaciones';
+import { PrenezControl } from '../components/Prenez';
 import { useAuth } from '../auth/AuthContext';
 
 const SEXOS: Sexo[] = ['VP', 'HV', 'HL', 'ML', 'MC', 'TO'];
@@ -741,12 +742,21 @@ function AnimalRow({ animal, onChange, ask }: { animal: Animal; onChange: () => 
       </tr>
       <tr>
         <td colSpan={6} style={{ paddingTop: 0 }}>
-          <Anotaciones
-            compact
-            target={{ animalId: animal.id }}
-            anotaciones={anotaciones}
-            onChange={onChange}
-          />
+          <div className="row" style={{ gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <Anotaciones
+              compact
+              target={{ animalId: animal.id }}
+              anotaciones={anotaciones}
+              onChange={onChange}
+            />
+            {animal.sexo === 'VP' && (
+              <PrenezControl
+                animalId={animal.id}
+                prenez={animal.prenez ?? []}
+                onChange={onChange}
+              />
+            )}
+          </div>
         </td>
       </tr>
     </>

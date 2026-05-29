@@ -71,6 +71,7 @@ router.get('/:id', async (req, res) => {
         include: {
           fotos: true,
           anotaciones: { orderBy: { createdAt: 'desc' } },
+          prenez: { orderBy: { fechaDiagnostico: 'desc' } },
         },
       },
       gastos: {

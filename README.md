@@ -40,7 +40,7 @@ miganado/
     └── src/
         ├── pages/          # Login, Registro, Dashboard, Fincas, FincaDetalle,
         │                   #   LoteForm, LoteImport, LoteDetalle, Traslados
-        ├── components/      # Navbar, PotreroMapa, Anotaciones, SexoBadge, ...
+        ├── components/      # Navbar, PotreroMapa, Anotaciones, Prenez, SexoBadge, ...
         ├── auth/           # contexto auth
         ├── api/            # cliente fetch + manejo token
         └── lib/format.ts   # formato dinero/peso/fecha
@@ -107,6 +107,9 @@ Variables de entorno (ver `backend/.env.example`):
 | POST | `/api/animales`      | crear animal individual en un lote |
 | PUT  | `/api/animales/:id`  | editar animal |
 | DELETE | `/api/animales/:id`| eliminar animal |
+| POST | `/api/prenez`        | registrar preñez de una vaca (VP) |
+| PUT  | `/api/prenez/:id`    | completar/editar evento (parto + crías, o aborto) |
+| DELETE | `/api/prenez/:id`  | eliminar evento de preñez |
 | POST | `/api/gastos`        | crear gasto |
 | DELETE | `/api/gastos/:id`  | eliminar gasto |
 | POST | `/api/pesajes`       | registrar pesaje del grupo (fecha, cabezas, peso total) |
@@ -183,6 +186,10 @@ cd backend && npm run build    # dist/
   peso de entrada, la GMD arranca desde ahí.
 - **Animal** — animales individuales dentro de un lote, con su propio peso / sexo
   / identificador.
+- **Prenez** — evento reproductivo de una **vaca parida (VP)**: arranca cuando se
+  confirma la preñez (fecha de diagnóstico) y se completa al parir (fecha de parto
+  + cuántas crías macho/hembra) o al abortar. Una vaca acumula varios → es su
+  histórico de partos. Las crías se **cuentan**, no se crean como animales aparte.
 - **Gasto** — gastos asociados al lote (transporte, comisiones, etc.).
 - **Foto** — fotos pegadas a un lote o a un animal (almacenadas en R2).
 - **Anotacion** — comentario de texto libre pegado a un lote, un animal o un
