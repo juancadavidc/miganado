@@ -21,6 +21,16 @@ enum CriaSexo {
   H
 }
 
+// Estado de un evento de preñez de una vaca:
+// PRENADA = preñez confirmada, esperando parto (evento abierto)
+// PARIO   = ya parió (se completó con fecha de parto y conteo de crías)
+// ABORTO  = perdió la preñez (evento cerrado sin crías)
+enum PrenezEstado {
+  PRENADA
+  PARIO
+  ABORTO
+}
+
 enum TrasladoRol {
   DUENO    // se transfiere la propiedad de la finca
   CUIDADOR // se asigna el cuidado de la finca
@@ -151,8 +161,28 @@ model Animal {
 
   fotos       Foto[]
   anotaciones Anotacion[]
+  prenez      Prenez[]
 
   @@index([loteId])
+}
+
+// Evento reproductivo de una vaca: arranca cuando se le confirma la preñez y se
+// completa cuando pare (fecha de parto + cuántas crías macho/hembra) o aborta.
+// Una vaca puede tener varios a lo largo de su vida → es el histórico de partos.
+model Prenez {
+  id              String       @id @default(cuid())
+  animalId        String
+  animal          Animal       @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  estado          PrenezEstado @default(PRENADA)
+  fechaDiagnostico DateTime    // cuándo se confirmó la preñez
+  fechaParto      DateTime?    // cuándo parió (al cerrar como PARIO)
+  criasMacho      Int          @default(0)
+  criasHembra     Int          @default(0)
+  notas           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([animalId])
 }
 
 model Gasto {

@@ -24,6 +24,27 @@ export const CRIA_SEXO_LABELS: Record<CriaSexo, string> = {
   H: 'Hembra',
 };
 
+export type PrenezEstado = 'PRENADA' | 'PARIO' | 'ABORTO';
+
+export const PRENEZ_ESTADO_LABELS: Record<PrenezEstado, string> = {
+  PRENADA: 'Preñada',
+  PARIO: 'Parió',
+  ABORTO: 'Aborto',
+};
+
+export type Prenez = {
+  id: string;
+  animalId: string;
+  estado: PrenezEstado;
+  fechaDiagnostico: string;
+  fechaParto: string | null;
+  criasMacho: number;
+  criasHembra: number;
+  notas: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type User = {
   id: string;
   documento: string;
@@ -143,6 +164,7 @@ export type Animal = {
   notas: string | null;
   fotos?: Foto[];
   anotaciones?: Anotacion[];
+  prenez?: Prenez[];
 };
 
 export type Gasto = {
