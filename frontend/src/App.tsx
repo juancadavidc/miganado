@@ -10,6 +10,7 @@ import { LoteDetallePage } from './pages/LoteDetallePage';
 import { TrasladosPage } from './pages/TrasladosPage';
 import { FincasPage } from './pages/FincasPage';
 import { FincaDetallePage } from './pages/FincaDetallePage';
+import { BulkPage } from './pages/BulkPage';
 
 function Protected({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -55,6 +56,14 @@ export default function App() {
           element={
             <Protected>
               <LoteDetallePage />
+            </Protected>
+          }
+        />
+        <Route
+          path="/bulk"
+          element={
+            <Protected>
+              <BulkPage />
             </Protected>
           }
         />
