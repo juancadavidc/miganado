@@ -13,6 +13,7 @@ import fotosRouter from './routes/fotos.js';
 import anotacionesRouter from './routes/anotaciones.js';
 import potrerosRouter from './routes/potreros.js';
 import fincasRouter from './routes/fincas.js';
+import bulkRouter from './routes/bulk.js';
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use('/api/fotos', fotosRouter);
 app.use('/api/anotaciones', anotacionesRouter);
 app.use('/api/potreros', potrerosRouter);
 app.use('/api/fincas', fincasRouter);
+app.use('/api/bulk', bulkRouter);
 
 // Manejo genérico de errores
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -587,6 +587,29 @@ label {
 }
 .kpi-sub { color: var(--color-text-muted); font-size: var(--text-xs); }
 
+/* Tarjeta clicable de una acción masiva (sección Bulk). */
+.accion-bulk {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.accion-bulk:hover { border-color: var(--color-primary); box-shadow: var(--shadow-md); }
+.accion-bulk .ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
 /* Recuadro interior (ej. KPIs de pesajes dentro de una card). */
 .tile {
   background: var(--color-surface-2);

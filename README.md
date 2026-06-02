@@ -32,14 +32,15 @@ miganado/
 │   ├── src/
 │   │   ├── server.ts
 │   │   ├── routes/         # auth, fincas, potreros, lotes, lotesImport,
-│   │   │                   #   animales, gastos, pesajes, fotos, anotaciones, traslados
+│   │   │                   #   animales, gastos, pesajes, fotos, anotaciones,
+│   │   │                   #   traslados, bulk
 │   │   ├── middleware/auth.ts
 │   │   └── lib/            # prisma, env, r2 (Cloudflare), fincaAccess (permisos)
 │   └── uploads/            # (legado; las fotos hoy van a R2)
 └── frontend/               # SPA Vite + React (PWA)
     └── src/
         ├── pages/          # Login, Registro, Dashboard, Fincas, FincaDetalle,
-        │                   #   LoteForm, LoteImport, LoteDetalle, Traslados
+        │                   #   LoteForm, LoteImport, LoteDetalle, Traslados, Bulk
         ├── components/      # Navbar, PotreroMapa, Anotaciones, Prenez, SexoBadge, ...
         ├── auth/           # contexto auth
         ├── api/            # cliente fetch + manejo token
@@ -112,6 +113,7 @@ Variables de entorno (ver `backend/.env.example`):
 | DELETE | `/api/prenez/:id`  | eliminar evento de preñez |
 | POST | `/api/gastos`        | crear gasto |
 | DELETE | `/api/gastos/:id`  | eliminar gasto |
+| POST | `/api/bulk/gastos-transporte` | repartir el flete de un viaje entre varios lotes (un `Gasto` por lote, prorrateado por cabeza) |
 | POST | `/api/pesajes`       | registrar pesaje del grupo (fecha, cabezas, peso total) |
 | DELETE | `/api/pesajes/:id` | eliminar pesaje |
 | POST | `/api/fotos`         | subir foto (form-data: `foto`, `loteId` o `animalId`) → R2 |
@@ -235,6 +237,18 @@ Claude Vision para extraer la tabla de lotes (fecha, n° feria, n° lote, sexo,
 cantidad, peso, valores…). El frontend (`/lotes/importar`) muestra el resultado en
 una tabla editable, recalcula peso promedio / valor total / valor a pagar, y
 guarda todo en una finca con `POST /api/lotes/bulk`.
+
+## Operaciones masivas (sección Bulk)
+
+La sección **Bulk** (`/bulk`) agrupa acciones que tocan varios lotes a la vez.
+Hoy tiene una: **agregar gastos de transporte**. Un viaje normalmente sube al
+camión varios lotes, así que el flete pertenece al *viaje*, no a un lote: en la
+modal marcas los lotes que viajaron e ingresas el monto total del flete + la
+fecha. La app reparte el costo **por cabeza** (partes iguales sobre la suma de
+`cantidad` de los lotes seleccionados, con reparto exacto en centavos) y crea un
+`Gasto` "Transporte" por lote con la parte que le toca. Así, cuando se venda,
+cada lote ya carga su flete prorrateado. La sección está pensada para sumar más
+acciones masivas con el tiempo.
 
 ## Notas
 
