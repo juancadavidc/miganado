@@ -98,7 +98,7 @@ Variables de entorno (ver `backend/.env.example`):
 | POST | `/api/potreros`      | crear potrero |
 | PUT  | `/api/potreros/:id`  | editar (nombre, notas, metadatos, ocupado, grid) |
 | DELETE | `/api/potreros/:id`| eliminar potrero |
-| GET  | `/api/lotes`         | listar mis lotes |
+| GET  | `/api/lotes`         | listar mis lotes (con `cantidadVendida`, `ingresosVentas`, `gastosTotal` y `gastosPendiente` por tipo para el dashboard) |
 | GET  | `/api/lotes/:id`     | detalle de un lote (animales, gastos, pesajes, ventas, fotos, anotaciones) |
 | POST | `/api/lotes`         | crear lote |
 | PUT  | `/api/lotes/:id`     | editar lote (campos según rol dueño/cuidador) |
@@ -111,9 +111,10 @@ Variables de entorno (ver `backend/.env.example`):
 | POST | `/api/prenez`        | registrar preñez de una vaca (VP) |
 | PUT  | `/api/prenez/:id`    | completar/editar evento (parto + crías, o aborto) |
 | DELETE | `/api/prenez/:id`  | eliminar evento de preñez |
-| POST | `/api/gastos`        | crear gasto |
+| POST | `/api/gastos`        | crear gasto (`tipo` del catálogo, `monto`, `pagado`; `descripcion` opcional salvo en `OTRO`) |
+| PATCH | `/api/gastos/:id`   | marcar un gasto como pagado / pendiente (`pagado`) — solo dueño |
 | DELETE | `/api/gastos/:id`  | eliminar gasto |
-| POST | `/api/bulk/gastos-transporte` | repartir el flete de un viaje entre varios lotes (un `Gasto` por lote, prorrateado por cabeza) |
+| POST | `/api/bulk/gastos-transporte` | repartir el flete de un viaje entre varios lotes (un `Gasto` `TRANSPORTE` por lote, prorrateado por cabeza) |
 | POST | `/api/pesajes`       | registrar pesaje del grupo (fecha, cabezas, peso total) |
 | DELETE | `/api/pesajes/:id` | eliminar pesaje |
 | POST | `/api/ventas`        | registrar una salida del lote (total o parcial; con `animalId` vende ese animal) — solo dueño |
@@ -197,13 +198,24 @@ cd backend && npm run build    # dist/
   muestra la **utilidad neta** (ingresos − compra − gastos). Si la salida es de un
   `Animal` registrado individualmente, la venta lo apunta y ese animal queda
   marcado como vendido (una sola vez).
+  El **dashboard** suma en la card **Utilidad** lo ganado con lo ya vendido, también
+  en ventas parciales: ingresos − (compra + gastos) prorrateados por las cabezas
+  vendidas (`utilidadVendido` en `frontend/src/lib/ventas.ts`). En un lote cerrado
+  coincide con su utilidad neta; en uno parcial es un estimado (asume el mismo costo
+  por cabeza).
 - **Animal** — animales individuales dentro de un lote, con su propio peso / sexo
   / identificador. Se puede marcar vendido uno solo, sin tocar el resto del lote.
 - **Prenez** — evento reproductivo de una **vaca parida (VP)**: arranca cuando se
   confirma la preñez (fecha de diagnóstico) y se completa al parir (fecha de parto
   + cuántas crías macho/hembra) o al abortar. Una vaca acumula varios → es su
   histórico de partos. Las crías se **cuentan**, no se crean como animales aparte.
-- **Gasto** — gastos asociados al lote (transporte, comisiones, etc.).
+- **Gasto** — gastos asociados al lote. Cada uno tiene un **tipo** de un catálogo
+  fijo (para poder filtrar y sumar por tipo), un detalle opcional y un estado
+  **pagado / pendiente**: la comisión del cuidador, por ejemplo, a veces se paga en
+  la venta y hasta entonces se debe. El lote muestra "Por pagar" con lo pendiente;
+  solo el dueño marca un gasto como pagado. El dashboard suma lo pendiente de todos
+  los lotes en la card **Por pagar** (con el desglose por tipo; solo aparece si se
+  debe algo). Ver el catálogo abajo.
 - **Foto** — fotos pegadas a un lote o a un animal (almacenadas en R2).
 - **Anotacion** — comentario de texto libre pegado a un lote, un animal o un
   gasto.
@@ -221,6 +233,14 @@ cd backend && npm run build    # dist/
 - **Cuidador:** hace el trabajo del día — potreros, animales, gastos, fotos,
   anotaciones — y edita los **datos operativos** del lote (fecha, sexo, cantidad,
   peso, notas, crías). Ve las ventas, pero no las registra.
+
+### Catálogo de tipos de gasto
+
+`TRANSPORTE`, `COMISION_CUIDADOR`, `VACUNAS`, `DESPARASITANTE`, `MEDICAMENTOS`
+(tratamientos, vitaminas, veterinario), `ALIMENTACION` (sal, melaza, concentrado),
+`ARRIENDO_PASTO`, `JORNALES`, `DOCUMENTOS` (guía de movilización, ICA, aretes) y
+`OTRO` (pide detalle). La comisión de feria no es un gasto: ya va en la
+`deduccion` de la compra.
 
 ### Catálogo de sexos
 

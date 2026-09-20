@@ -37,3 +37,15 @@ export function precioPorKg(venta: Pick<Venta, 'pesoTotal' | 'valorTotal'>): num
   if (kg <= 0) return null;
   return Number(venta.valorTotal) / kg;
 }
+
+// Utilidad de lo ya vendido en un lote: ingresos − costo de esas cabezas. El costo
+// (compra + gastos) se prorratea por cabeza, así una venta parcial también cuenta;
+// con el lote cerrado da lo mismo que `resumenVentas().utilidad`.
+export function utilidadVendido(
+  lote: Pick<Lote, 'cantidad' | 'valorAPagar' | 'cantidadVendida' | 'ingresosVentas' | 'gastosTotal'>,
+): number {
+  const vendidas = Math.min(lote.cantidadVendida ?? 0, lote.cantidad);
+  if (vendidas === 0 || lote.cantidad === 0) return 0;
+  const costo = Number(lote.valorAPagar) + (lote.gastosTotal ?? 0);
+  return (lote.ingresosVentas ?? 0) - (costo * vendidas) / lote.cantidad;
+}

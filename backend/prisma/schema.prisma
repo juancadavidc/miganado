@@ -25,6 +25,19 @@ enum CriaSexo {
 // PRENADA = preñez confirmada, esperando parto (evento abierto)
 // PARIO   = ya parió (se completó con fecha de parto y conteo de crías)
 // ABORTO  = perdió la preñez (evento cerrado sin crías)
+enum TipoGasto {
+  TRANSPORTE
+  COMISION_CUIDADOR
+  VACUNAS
+  DESPARASITANTE
+  MEDICAMENTOS
+  ALIMENTACION
+  ARRIENDO_PASTO
+  JORNALES
+  DOCUMENTOS
+  OTRO
+}
+
 enum PrenezEstado {
   PRENADA
   PARIO
@@ -191,14 +204,17 @@ model Gasto {
   id          String   @id @default(cuid())
   loteId      String
   lote        Lote     @relation(fields: [loteId], references: [id], onDelete: Cascade)
-  descripcion String
+  tipo        TipoGasto @default(OTRO)
+  descripcion String // detalle libre; puede ir vacío salvo en OTRO
   monto       Decimal  @db.Decimal(14, 2)
+  pagado      Boolean  @default(true) // false = se debe (p. ej. comisión del cuidador que se salda en la venta)
   fecha       DateTime @default(now())
   createdAt   DateTime @default(now())
 
   anotaciones Anotacion[]
 
   @@index([loteId])
+  @@index([tipo])
 }
 
 // Salida (venta) de ganado del lote. Un lote tiene 1 entrada y N salidas: se

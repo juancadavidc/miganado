@@ -6,8 +6,8 @@ import {
   Scale, Info, Banknote, CheckCircle2,
 } from 'lucide-react';
 import { api, ApiError } from '../api/client';
-import type { Animal, CriaSexo, Foto, Gasto, LoteDetalle, Sexo, Venta } from '../types';
-import { CRIA_SEXO_LABELS, SEXO_LABELS } from '../types';
+import type { Animal, CriaSexo, Foto, Gasto, LoteDetalle, Sexo, TipoGasto, Venta } from '../types';
+import { CRIA_SEXO_LABELS, SEXO_LABELS, TIPO_GASTO_LABELS } from '../types';
 import { fmtDate, fmtMoney, fmtNum, fmtDias, toInputDate } from '../lib/format';
 import { calcularPesajes } from '../lib/pesajes';
 import { precioPorKg, resumenVentas } from '../lib/ventas';
@@ -18,6 +18,7 @@ import { PrenezControl } from '../components/Prenez';
 import { useAuth } from '../auth/AuthContext';
 
 const SEXOS: Sexo[] = ['VP', 'HV', 'HL', 'ML', 'MC', 'TO'];
+const TIPOS_GASTO = Object.keys(TIPO_GASTO_LABELS) as TipoGasto[];
 
 export function LoteDetallePage() {
   const { id } = useParams<{ id: string }>();
@@ -147,7 +148,7 @@ export function LoteDetallePage() {
       <SeccionFotos lote={lote} onChange={cargar} ask={ask} />
       <SeccionAnotacionesLote lote={lote} onChange={cargar} />
       <SeccionAnimales lote={lote} esDueno={esDueno} onChange={cargar} ask={ask} />
-      <SeccionGastos lote={lote} onChange={cargar} ask={ask} />
+      <SeccionGastos lote={lote} esDueno={esDueno} onChange={cargar} ask={ask} />
 
       {dialog}
     </div>
@@ -1156,13 +1157,18 @@ function AnimalRow({
   );
 }
 
-function SeccionGastos({ lote, onChange, ask }: { lote: LoteDetalle; onChange: () => void; ask: Asker }) {
+function SeccionGastos({
+  lote, esDueno, onChange, ask,
+}: { lote: LoteDetalle; esDueno: boolean; onChange: () => void; ask: Asker }) {
+  const [tipo, setTipo] = useState<TipoGasto>('TRANSPORTE');
   const [descripcion, setDescripcion] = useState('');
+  const [pagado, setPagado] = useState(true);
   const [monto, setMonto] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const total = lote.gastos.reduce((s, g) => s + Number(g.monto), 0);
+  const porPagar = lote.gastos.filter((g) => !g.pagado).reduce((s, g) => s + Number(g.monto), 0);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -1171,10 +1177,11 @@ function SeccionGastos({ lote, onChange, ask }: { lote: LoteDetalle; onChange: (
     try {
       await api('/api/gastos', {
         method: 'POST',
-        body: { loteId: lote.id, descripcion, monto: Number(monto) },
+        body: { loteId: lote.id, tipo, descripcion, monto: Number(monto), pagado },
       });
       setDescripcion('');
       setMonto('');
+      setPagado(true);
       onChange();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error');
@@ -1186,7 +1193,7 @@ function SeccionGastos({ lote, onChange, ask }: { lote: LoteDetalle; onChange: (
   async function onDelete(gasto: Gasto) {
     const ok = await ask({
       title: '¿Eliminar gasto?',
-      description: gasto.descripcion,
+      description: gasto.descripcion || TIPO_GASTO_LABELS[gasto.tipo],
       confirmLabel: 'Eliminar',
       variant: 'danger',
     });
@@ -1203,21 +1210,38 @@ function SeccionGastos({ lote, onChange, ask }: { lote: LoteDetalle; onChange: (
           Gastos extras
           <span className="muted tabnum">({lote.gastos.length})</span>
         </h2>
-        <span className="badge" style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }}>
-          Total: {fmtMoney(total)}
+        <span className="row" style={{ gap: 'var(--space-2)' }}>
+          {porPagar > 0 && (
+            <span className="badge" style={{ background: 'var(--color-danger-soft)', color: 'var(--color-danger)' }}>
+              Por pagar: {fmtMoney(porPagar)}
+            </span>
+          )}
+          <span className="badge" style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }}>
+            Total: {fmtMoney(total)}
+          </span>
         </span>
       </div>
       <form onSubmit={onSubmit}>
         <div className="grid-3">
-          <div className="field" style={{ gridColumn: 'span 2' }}>
-            <label htmlFor="gasto-desc">Descripción</label>
-            <input id="gasto-desc" type="text" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} required placeholder="ej. Transporte, comisión…" />
+          <div className="field">
+            <label htmlFor="gasto-tipo">Tipo</label>
+            <select id="gasto-tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TipoGasto)}>
+              {TIPOS_GASTO.map((t) => <option key={t} value={t}>{TIPO_GASTO_LABELS[t]}</option>)}
+            </select>
           </div>
           <div className="field">
             <label htmlFor="gasto-monto">Monto ($)</label>
             <input id="gasto-monto" type="number" step="0.01" min={0} value={monto} onChange={(e) => setMonto(e.target.value)} required />
           </div>
+          <div className="field">
+            <label htmlFor="gasto-desc">Detalle{tipo === 'OTRO' ? '' : ' (opcional)'}</label>
+            <input id="gasto-desc" type="text" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} required={tipo === 'OTRO'} placeholder="ej. aftosa, 2 bultos de sal…" />
+          </div>
         </div>
+        <label className="row" style={{ gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+          <input type="checkbox" checked={pagado} onChange={(e) => setPagado(e.target.checked)} />
+          Ya lo pagué
+        </label>
         {error && (
           <div className="error" role="alert">
             <AlertCircle size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} /> {error}
@@ -1234,11 +1258,11 @@ function SeccionGastos({ lote, onChange, ask }: { lote: LoteDetalle; onChange: (
         <div style={{ overflowX: 'auto', marginTop: 'var(--space-3)' }}>
           <table className="table">
             <thead>
-              <tr><th>Fecha</th><th>Descripción</th><th className="num">Monto</th><th></th></tr>
+              <tr><th>Fecha</th><th>Tipo</th><th className="num">Monto</th><th></th></tr>
             </thead>
             <tbody>
               {lote.gastos.map((g) => (
-                <GastoRow key={g.id} gasto={g} onChange={onChange} onDelete={() => onDelete(g)} />
+                <GastoRow key={g.id} gasto={g} esDueno={esDueno} onChange={onChange} onDelete={() => onDelete(g)} />
               ))}
             </tbody>
           </table>
@@ -1250,21 +1274,44 @@ function SeccionGastos({ lote, onChange, ask }: { lote: LoteDetalle; onChange: (
 
 function GastoRow({
   gasto,
+  esDueno,
   onChange,
   onDelete,
 }: {
   gasto: Gasto;
+  esDueno: boolean;
   onChange: () => void;
   onDelete: () => void;
 }) {
   const anotaciones = gasto.anotaciones ?? [];
+  const label = TIPO_GASTO_LABELS[gasto.tipo];
+  // El transporte del bulk guarda "Transporte" como detalle: no lo repitas.
+  const detalle = gasto.descripcion && gasto.descripcion !== label ? gasto.descripcion : null;
+
+  async function marcarPagado() {
+    await api(`/api/gastos/${gasto.id}`, { method: 'PATCH', body: { pagado: true } });
+    onChange();
+  }
   return (
     <>
       <tr>
         <td>{fmtDate(gasto.fecha)}</td>
-        <td>{gasto.descripcion}</td>
+        <td>
+          <strong>{label}</strong>
+          {detalle && <span className="muted"> · {detalle}</span>}
+          {!gasto.pagado && (
+            <span className="badge" style={{ marginLeft: 6, background: 'var(--color-danger-soft)', color: 'var(--color-danger)' }}>
+              Pendiente
+            </span>
+          )}
+        </td>
         <td className="num">{fmtMoney(gasto.monto)}</td>
         <td>
+          {esDueno && !gasto.pagado && (
+            <button type="button" className="btn-secondary btn-sm" onClick={marcarPagado} style={{ marginRight: 6 }}>
+              Marcar pagado
+            </button>
+          )}
           <button
             type="button"
             className="btn-danger btn-icon btn-sm"

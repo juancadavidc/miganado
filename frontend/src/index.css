@@ -508,6 +508,8 @@ label {
 .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
 .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); }
+/* Fila de KPIs: las cards que no aplican no se muestran, así que se reparten solas. */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--space-3); }
 @media (max-width: 720px) {
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
 }

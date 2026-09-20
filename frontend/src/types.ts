@@ -152,6 +152,9 @@ export type Lote = {
   fincaId: string;
   finca?: LoteFincaResumen;
   cantidadVendida?: number; // solo en el listado: cabezas que ya salieron
+  ingresosVentas?: number; // solo en el listado: suma de lo recibido por las ventas
+  gastosTotal?: number; // solo en el listado: suma de los gastos del lote
+  gastosPendiente?: Partial<Record<TipoGasto, number>>; // solo en el listado: lo que se debe, por tipo
   _count?: { animales: number; fotos: number; gastos: number };
 };
 
@@ -168,11 +171,30 @@ export type Animal = {
   prenez?: Prenez[];
 };
 
+export type TipoGasto =
+  | 'TRANSPORTE' | 'COMISION_CUIDADOR' | 'VACUNAS' | 'DESPARASITANTE' | 'MEDICAMENTOS'
+  | 'ALIMENTACION' | 'ARRIENDO_PASTO' | 'JORNALES' | 'DOCUMENTOS' | 'OTRO';
+
+export const TIPO_GASTO_LABELS: Record<TipoGasto, string> = {
+  TRANSPORTE: 'Transporte',
+  COMISION_CUIDADOR: 'Comisión cuidador',
+  VACUNAS: 'Vacunas',
+  DESPARASITANTE: 'Desparasitante',
+  MEDICAMENTOS: 'Medicamentos / veterinario',
+  ALIMENTACION: 'Alimentación',
+  ARRIENDO_PASTO: 'Arriendo de pasto',
+  JORNALES: 'Jornales',
+  DOCUMENTOS: 'Documentos',
+  OTRO: 'Otro',
+};
+
 export type Gasto = {
   id: string;
   loteId: string;
-  descripcion: string;
+  tipo: TipoGasto;
+  descripcion: string; // detalle opcional (obligatorio solo en OTRO)
   monto: string;
+  pagado: boolean;
   fecha: string;
   anotaciones?: Anotacion[];
 };

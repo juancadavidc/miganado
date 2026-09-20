@@ -132,6 +132,10 @@ Al cerrarse el lote ya se muestran **inversión total** (compra + gastos de ceba
 **ingresos totales** (todas las ventas) y **utilidad neta**. Falta el **costo por
 kilo producido**, que cruza los pesajes con la inversión.
 
+**Siguiente paso (cards de gastos):** el dashboard ya muestra **lo que se debe**
+(card "Por pagar", por tipo). Falta el **gasto total por tipo** (cuánto llevas en
+sanidad, alimentación, transporte…).
+
 ### 5. Sanidad — *mediana*
 Eventos de sanidad por lote: fecha, tipo (vacuna / desparasitación /
 tratamiento), producto, dosis, quién aplicó, cabezas tratadas. En Córdoba la
