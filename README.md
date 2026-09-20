@@ -203,6 +203,9 @@ cd backend && npm run build    # dist/
   vendidas (`utilidadVendido` en `frontend/src/lib/ventas.ts`). En un lote cerrado
   coincide con su utilidad neta; en uno parcial es un estimado (asume el mismo costo
   por cabeza).
+  La card **Valor a pagar** del dashboard cuenta solo lo que queda en finca (la
+  compra prorrateada por las cabezas sin vender) y la card **Vendido** suma lo
+  recibido en todas las ventas, con las cabezas vendidas.
 - **Animal** — animales individuales dentro de un lote, con su propio peso / sexo
   / identificador. Se puede marcar vendido uno solo, sin tocar el resto del lote.
 - **Prenez** — evento reproductivo de una **vaca parida (VP)**: arranca cuando se

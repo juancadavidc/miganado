@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Beef, Scale, Wallet, TrendingUp, HandCoins, ArrowRight, PackageOpen, AlertCircle, Upload } from 'lucide-react';
+import { Plus, Beef, Scale, Wallet, Banknote, TrendingUp, HandCoins, ArrowRight, PackageOpen, AlertCircle, Upload } from 'lucide-react';
 import { api } from '../api/client';
 import type { Lote, TipoGasto } from '../types';
 import { TIPO_GASTO_LABELS } from '../types';
@@ -12,6 +12,14 @@ import { utilidadVendido } from '../lib/ventas';
 // Lo comprado no cambia al vender; lo que baja son las cabezas que quedan cebándose.
 function enFinca(lote: Lote): number {
   return Math.max(0, lote.cantidad - (lote.cantidadVendida ?? 0));
+}
+
+// A cómo se compró el kilo: el valor final de la feria, o total ÷ peso si no vino.
+function precioKgCompra(lote: Lote): number | null {
+  const final = Number(lote.valorFinal);
+  if (final > 0) return final;
+  const peso = Number(lote.pesoTotal);
+  return peso > 0 ? Number(lote.valorTotal) / peso : null;
 }
 
 function CantidadCabezas({ lote, unidad = '' }: { lote: Lote; unidad?: string }) {
@@ -74,7 +82,10 @@ export function DashboardPage() {
       acc.cantidad += enFinca(l);
       acc.pesoTotal += Number(l.pesoTotal);
       acc.valorTotal += Number(l.valorTotal);
-      acc.valorAPagar += Number(l.valorAPagar);
+      // Solo lo que queda en finca: la compra se prorratea por las cabezas que no se han vendido.
+      if (l.cantidad > 0) acc.valorAPagar += (Number(l.valorAPagar) * enFinca(l)) / l.cantidad;
+      acc.vendido += l.ingresosVentas ?? 0;
+      acc.cabezasVendidas += Math.min(l.cantidadVendida ?? 0, l.cantidad);
       acc.utilidad += utilidadVendido(l);
       if ((l.cantidadVendida ?? 0) > 0) acc.lotesConVentas += 1;
       for (const [tipo, monto] of Object.entries(l.gastosPendiente ?? {})) {
@@ -84,7 +95,7 @@ export function DashboardPage() {
       return acc;
     },
     {
-      cantidad: 0, pesoTotal: 0, valorTotal: 0, valorAPagar: 0, utilidad: 0, lotesConVentas: 0,
+      cantidad: 0, pesoTotal: 0, valorTotal: 0, valorAPagar: 0, vendido: 0, cabezasVendidas: 0, utilidad: 0, lotesConVentas: 0,
       pendiente: 0, pendientePorTipo: {} as Partial<Record<TipoGasto, number>>,
     },
   );
@@ -127,7 +138,17 @@ export function DashboardPage() {
           <section className="kpi-grid" style={{ marginBottom: 'var(--space-4)' }}>
             <KpiCard icon={<Beef size={16} />} label="Cabezas en finca" value={String(totales.cantidad)} />
             <KpiCard icon={<Scale size={16} />} label="Peso total" value={`${fmtNum(totales.pesoTotal)}`} suffix="kg" />
-            <KpiCard icon={<Wallet size={16} />} label="Valor a pagar" value={fmtMoney(totales.valorAPagar)} />
+            <KpiCard icon={<Wallet size={16} />} label="Valor a pagar" value={fmtMoney(totales.valorAPagar)} sub="de lo que queda en finca" />
+            <KpiCard
+              icon={<Banknote size={16} />}
+              label="Vendido"
+              value={fmtMoney(totales.vendido)}
+              sub={
+                totales.cabezasVendidas === 0
+                  ? 'aún sin ventas'
+                  : `${totales.cabezasVendidas} ${totales.cabezasVendidas === 1 ? 'cabeza vendida' : 'cabezas vendidas'}`
+              }
+            />
             <KpiCard
               icon={<TrendingUp size={16} />}
               label="Utilidad"
@@ -160,6 +181,7 @@ export function DashboardPage() {
                   <th>Sexo</th>
                   <th className="num">Cant.</th>
                   <th className="num">Peso (kg)</th>
+                  <th className="num">$/kg</th>
                   <th className="num">Valor total</th>
                   <th className="num">A pagar</th>
                   <th>Referencia</th>
@@ -175,6 +197,7 @@ export function DashboardPage() {
                     <td><SexoBadge sexo={l.sexo} /></td>
                     <td className="num"><CantidadCabezas lote={l} /></td>
                     <td className="num">{fmtNum(l.pesoTotal)}</td>
+                    <td className="num">{fmtMoney(precioKgCompra(l))}</td>
                     <td className="num">{fmtMoney(l.valorTotal)}</td>
                     <td className="num"><strong>{fmtMoney(l.valorAPagar)}</strong></td>
                     <td>{l.referencia ?? '—'}</td>
@@ -210,6 +233,10 @@ export function DashboardPage() {
                   <div>
                     <dt>Peso</dt>
                     <dd>{fmtNum(l.pesoTotal)} kg</dd>
+                  </div>
+                  <div>
+                    <dt>$/kg</dt>
+                    <dd>{fmtMoney(precioKgCompra(l))}</dd>
                   </div>
                   <div>
                     <dt>Valor</dt>
