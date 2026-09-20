@@ -151,6 +151,7 @@ export type Lote = {
   updatedAt: string;
   fincaId: string;
   finca?: LoteFincaResumen;
+  cantidadVendida?: number; // solo en el listado: cabezas que ya salieron
   _count?: { animales: number; fotos: number; gastos: number };
 };
 
@@ -187,6 +188,24 @@ export type Foto = {
   url: string;
 };
 
+// Salida del lote. Un lote tiene 1 entrada (la compra) y N salidas: se venden
+// las cabezas que ya están listas y el resto sigue cebándose. Cuando la salida
+// es de un animal registrado individualmente, `animalId` lo apunta.
+export type Venta = {
+  id: string;
+  loteId: string;
+  animalId: string | null;
+  fecha: string;
+  cantidad: number;
+  pesoTotal: string | null;
+  valorTotal: string;
+  deduccion: string;
+  valorRecibido: string;
+  comprador: string | null;
+  notas: string | null;
+  createdAt: string;
+};
+
 export type Pesaje = {
   id: string;
   loteId: string;
@@ -203,4 +222,5 @@ export type LoteDetalle = Lote & {
   fotos: Foto[];
   anotaciones: Anotacion[];
   pesajes: Pesaje[];
+  ventas: Venta[];
 };

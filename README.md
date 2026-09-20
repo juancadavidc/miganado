@@ -3,15 +3,15 @@
 App fullstack para gestionar **ceba de ganado**: el dueño compra ganado en feria,
 lo pone al cuidado de un cuidador en una finca, y registra el lote (compra,
 animales, gastos y fotos). Incluye mapa de potreros y captura de la **planilla de
-feria** por foto (OCR con IA). Hoy el `Lote` representa la **compra** del ganado
-y su **ceba en finca** (pesajes en el tiempo → **GMD**); la venta en feria está en
-el roadmap.
+feria** por foto (OCR con IA). El `Lote` cubre el ciclo completo: la **compra**,
+la **ceba en finca** (pesajes en el tiempo → **GMD**) y las **ventas** (una o
+varias salidas, hasta cerrar el lote y ver la utilidad).
 
 Inspirada en la planilla **Centro Comercial Ganadero SAS** (Buenavista, Córdoba).
 
 > ¿Hacia dónde va? Mira [`docs/roadmap.md`](docs/roadmap.md) para la priorización
-> de las próximas funcionalidades (rotación de potreros, venta en feria, utilidad
-> real).
+> de las próximas funcionalidades (rotación de potreros, sanidad, reportes de
+> rentabilidad).
 
 ## Stack
 
@@ -99,7 +99,7 @@ Variables de entorno (ver `backend/.env.example`):
 | PUT  | `/api/potreros/:id`  | editar (nombre, notas, metadatos, ocupado, grid) |
 | DELETE | `/api/potreros/:id`| eliminar potrero |
 | GET  | `/api/lotes`         | listar mis lotes |
-| GET  | `/api/lotes/:id`     | detalle de un lote (animales, gastos, pesajes, fotos, anotaciones) |
+| GET  | `/api/lotes/:id`     | detalle de un lote (animales, gastos, pesajes, ventas, fotos, anotaciones) |
 | POST | `/api/lotes`         | crear lote |
 | PUT  | `/api/lotes/:id`     | editar lote (campos según rol dueño/cuidador) |
 | DELETE | `/api/lotes/:id`   | eliminar lote (solo dueño) |
@@ -116,6 +116,8 @@ Variables de entorno (ver `backend/.env.example`):
 | POST | `/api/bulk/gastos-transporte` | repartir el flete de un viaje entre varios lotes (un `Gasto` por lote, prorrateado por cabeza) |
 | POST | `/api/pesajes`       | registrar pesaje del grupo (fecha, cabezas, peso total) |
 | DELETE | `/api/pesajes/:id` | eliminar pesaje |
+| POST | `/api/ventas`        | registrar una salida del lote (total o parcial; con `animalId` vende ese animal) — solo dueño |
+| DELETE | `/api/ventas/:id`  | eliminar venta (las cabezas vuelven a contar como en finca) — solo dueño |
 | POST | `/api/fotos`         | subir foto (form-data: `foto`, `loteId` o `animalId`) → R2 |
 | DELETE | `/api/fotos/:id`   | eliminar foto |
 | POST | `/api/anotaciones`   | crear anotación (en `loteId`, `animalId` o `gastoId`) |
@@ -176,18 +178,27 @@ cd backend && npm run build    # dist/
 - **Potrero** — zona de pastoreo dentro de una finca. Estado *Ocupado* / *En
   descanso* (manual) con fecha, `metadatos` libres (área, tipo de pasto, aforo,
   agua…) y posición/tamaño en el mapa visual (`gridX/Y/W/H`).
-- **Lote** — **compra** de un lote de ganado en feria/subasta (la unidad principal
-  hoy; nace al comprar, antes de cebarlo): fecha, n° feria, n° lote, sexo,
+- **Lote** — **compra** de un lote de ganado en feria/subasta (la unidad principal;
+  nace al comprar, antes de cebarlo): fecha, n° feria, n° lote, sexo,
   cantidad, peso total/promedio, valor final ($/kg), valor total, deducción,
-  referencia, valor a pagar (lo que se paga al comprar), notas. Los **pesajes** en
-  el tiempo (→ GMD) ya se registran; la **venta** en feria aún no — ver
-  `docs/roadmap.md`.
+  referencia, valor a pagar (lo que se paga al comprar), notas. `cantidad` es
+  siempre **lo comprado** y no cambia al vender: las cabezas que quedan en finca
+  salen de restarle las ventas.
 - **Pesaje** — pesaje del lote completo en el tiempo (manejo **por grupo**): fecha,
   cabezas pesadas y peso total. La app calcula el promedio por cabeza y la
   **ganancia media diaria (GMD)** entre pesajes consecutivos; si la compra tiene
   peso de entrada, la GMD arranca desde ahí.
+- **Venta** — **salida** de ganado del lote: fecha, cabezas, peso de salida
+  (opcional — a veces se vende por cabeza, sin báscula), valor de la venta,
+  deducción (comisión, báscula) y valor recibido; opcionalmente comprador y nota.
+  Un lote tiene **1 entrada y N salidas**: se venden las cabezas que ya están
+  listas y el resto sigue cebándose, así que la **venta parcial es la norma**. El
+  lote se cierra cuando la suma de cabezas vendidas iguala la comprada, y ahí se
+  muestra la **utilidad neta** (ingresos − compra − gastos). Si la salida es de un
+  `Animal` registrado individualmente, la venta lo apunta y ese animal queda
+  marcado como vendido (una sola vez).
 - **Animal** — animales individuales dentro de un lote, con su propio peso / sexo
-  / identificador.
+  / identificador. Se puede marcar vendido uno solo, sin tocar el resto del lote.
 - **Prenez** — evento reproductivo de una **vaca parida (VP)**: arranca cuando se
   confirma la preñez (fecha de diagnóstico) y se completa al parir (fecha de parto
   + cuántas crías macho/hembra) o al abortar. Una vaca acumula varios → es su
@@ -204,11 +215,12 @@ cd backend && npm run build    # dist/
 
 - **Dueño:** crea/edita/elimina la finca, transfiere propiedad/cuidado, y edita
   los **valores comerciales de la compra** del lote (n° feria, n° lote, valor
-  final/total, deducción, referencia, valor a pagar). Solo el dueño puede eliminar
+  final/total, deducción, referencia, valor a pagar). Las **ventas** también son
+  suyas: solo el dueño las registra y las elimina. Solo el dueño puede eliminar
   lotes.
 - **Cuidador:** hace el trabajo del día — potreros, animales, gastos, fotos,
   anotaciones — y edita los **datos operativos** del lote (fecha, sexo, cantidad,
-  peso, notas, crías).
+  peso, notas, crías). Ve las ventas, pero no las registra.
 
 ### Catálogo de sexos
 

@@ -55,10 +55,18 @@ router.get('/', async (req, res) => {
     orderBy: { fecha: 'desc' },
     include: {
       ...fincaInclude,
+      ventas: { select: { cantidad: true } },
       _count: { select: { animales: true, fotos: true, gastos: true } },
     },
   });
-  res.json({ lotes });
+  // En el listado solo interesa cuántas cabezas ya salieron, no el detalle de
+  // cada venta: `cantidad` sigue siendo lo comprado y la resta son las que quedan.
+  res.json({
+    lotes: lotes.map(({ ventas, ...lote }) => ({
+      ...lote,
+      cantidadVendida: ventas.reduce((s, v) => s + v.cantidad, 0),
+    })),
+  });
 });
 
 router.get('/:id', async (req, res) => {
@@ -79,6 +87,7 @@ router.get('/:id', async (req, res) => {
         include: { anotaciones: { orderBy: { createdAt: 'desc' } } },
       },
       pesajes: { orderBy: { fecha: 'asc' } },
+      ventas: { orderBy: { fecha: 'desc' } },
       fotos: { where: { animalId: null }, orderBy: { createdAt: 'desc' } },
       anotaciones: { orderBy: { createdAt: 'desc' } },
     },

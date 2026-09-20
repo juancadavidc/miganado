@@ -7,6 +7,31 @@ import { fmtDate, fmtMoney, fmtNum } from '../lib/format';
 import { SexoBadge } from '../components/SexoBadge';
 import { useAuth } from '../auth/AuthContext';
 
+// Lo comprado no cambia al vender; lo que baja son las cabezas que quedan cebándose.
+function enFinca(lote: Lote): number {
+  return Math.max(0, lote.cantidad - (lote.cantidadVendida ?? 0));
+}
+
+function CantidadCabezas({ lote, unidad = '' }: { lote: Lote; unidad?: string }) {
+  const quedan = enFinca(lote);
+  if (quedan === lote.cantidad) return <>{lote.cantidad}{unidad}</>;
+  if (quedan === 0) {
+    return (
+      <span className="badge" style={{ background: 'var(--color-primary-soft)', color: 'var(--color-primary)' }}>
+        Vendido
+      </span>
+    );
+  }
+  return (
+    <>
+      {quedan}{unidad}
+      <span className="muted" style={{ marginLeft: 4, fontSize: '0.7rem' }} title={`${lote.cantidadVendida} vendidas de ${lote.cantidad}`}>
+        de {lote.cantidad}
+      </span>
+    </>
+  );
+}
+
 function RolTag({ lote, meId }: { lote: Lote; meId?: string }) {
   const finca = lote.finca;
   if (!meId || !finca?.dueno) return null;
@@ -44,7 +69,7 @@ export function DashboardPage() {
 
   const totales = lotes.reduce(
     (acc, l) => {
-      acc.cantidad += l.cantidad;
+      acc.cantidad += enFinca(l);
       acc.pesoTotal += Number(l.pesoTotal);
       acc.valorTotal += Number(l.valorTotal);
       acc.valorAPagar += Number(l.valorAPagar);
@@ -84,7 +109,7 @@ export function DashboardPage() {
       ) : (
         <>
           <section className="grid-3" style={{ marginBottom: 'var(--space-4)' }}>
-            <KpiCard icon={<Beef size={16} />} label="Cabezas en total" value={String(totales.cantidad)} />
+            <KpiCard icon={<Beef size={16} />} label="Cabezas en finca" value={String(totales.cantidad)} />
             <KpiCard icon={<Scale size={16} />} label="Peso total" value={`${fmtNum(totales.pesoTotal)}`} suffix="kg" />
             <KpiCard icon={<Wallet size={16} />} label="Valor a pagar" value={fmtMoney(totales.valorAPagar)} />
           </section>
@@ -112,7 +137,7 @@ export function DashboardPage() {
                     <td>{l.numeroFeria ?? '—'}</td>
                     <td>{l.loteNumero ?? '—'}<RolTag lote={l} meId={meId} /></td>
                     <td><SexoBadge sexo={l.sexo} /></td>
-                    <td className="num">{l.cantidad}</td>
+                    <td className="num"><CantidadCabezas lote={l} /></td>
                     <td className="num">{fmtNum(l.pesoTotal)}</td>
                     <td className="num">{fmtMoney(l.valorTotal)}</td>
                     <td className="num"><strong>{fmtMoney(l.valorAPagar)}</strong></td>
@@ -143,8 +168,8 @@ export function DashboardPage() {
                 </div>
                 <dl className="lote-card-body">
                   <div>
-                    <dt>Cantidad</dt>
-                    <dd>{l.cantidad} cab.</dd>
+                    <dt>En finca</dt>
+                    <dd><CantidadCabezas lote={l} unidad=" cab." /></dd>
                   </div>
                   <div>
                     <dt>Peso</dt>
