@@ -60,7 +60,7 @@ router.post('/gastos-transporte', async (req, res) => {
   const gastos = await prisma.$transaction(
     repartos.map((r) =>
       prisma.gasto.create({
-        data: { loteId: r.lote.id, descripcion: desc, monto: r.cent / 100, fecha: fechaViaje },
+        data: { loteId: r.lote.id, tipo: 'TRANSPORTE', descripcion: desc, monto: r.cent / 100, fecha: fechaViaje },
       }),
     ),
   );

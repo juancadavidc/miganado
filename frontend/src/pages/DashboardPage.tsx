@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Beef, Scale, Wallet, ArrowRight, PackageOpen, AlertCircle, Upload } from 'lucide-react';
+import { Plus, Beef, Scale, Wallet, TrendingUp, HandCoins, ArrowRight, PackageOpen, AlertCircle, Upload } from 'lucide-react';
 import { api } from '../api/client';
-import type { Lote } from '../types';
+import type { Lote, TipoGasto } from '../types';
+import { TIPO_GASTO_LABELS } from '../types';
 import { fmtDate, fmtMoney, fmtNum } from '../lib/format';
 import { SexoBadge } from '../components/SexoBadge';
 import { useAuth } from '../auth/AuthContext';
+import { utilidadVendido } from '../lib/ventas';
 
 // Lo comprado no cambia al vender; lo que baja son las cabezas que quedan cebándose.
 function enFinca(lote: Lote): number {
@@ -73,10 +75,24 @@ export function DashboardPage() {
       acc.pesoTotal += Number(l.pesoTotal);
       acc.valorTotal += Number(l.valorTotal);
       acc.valorAPagar += Number(l.valorAPagar);
+      acc.utilidad += utilidadVendido(l);
+      if ((l.cantidadVendida ?? 0) > 0) acc.lotesConVentas += 1;
+      for (const [tipo, monto] of Object.entries(l.gastosPendiente ?? {})) {
+        acc.pendientePorTipo[tipo as TipoGasto] = (acc.pendientePorTipo[tipo as TipoGasto] ?? 0) + monto;
+        acc.pendiente += monto;
+      }
       return acc;
     },
-    { cantidad: 0, pesoTotal: 0, valorTotal: 0, valorAPagar: 0 },
+    {
+      cantidad: 0, pesoTotal: 0, valorTotal: 0, valorAPagar: 0, utilidad: 0, lotesConVentas: 0,
+      pendiente: 0, pendientePorTipo: {} as Partial<Record<TipoGasto, number>>,
+    },
   );
+  // Quién te cobra, de mayor a menor: "Comisión cuidador $1.200.000 · Vacunas $80.000".
+  const desglosePendiente = Object.entries(totales.pendientePorTipo)
+    .sort(([, a], [, b]) => b - a)
+    .map(([tipo, monto]) => `${TIPO_GASTO_LABELS[tipo as TipoGasto]} ${fmtMoney(monto)}`)
+    .join(' · ');
 
   return (
     <div className="container">
@@ -108,10 +124,30 @@ export function DashboardPage() {
         <EmptyState />
       ) : (
         <>
-          <section className="grid-3" style={{ marginBottom: 'var(--space-4)' }}>
+          <section className="kpi-grid" style={{ marginBottom: 'var(--space-4)' }}>
             <KpiCard icon={<Beef size={16} />} label="Cabezas en finca" value={String(totales.cantidad)} />
             <KpiCard icon={<Scale size={16} />} label="Peso total" value={`${fmtNum(totales.pesoTotal)}`} suffix="kg" />
             <KpiCard icon={<Wallet size={16} />} label="Valor a pagar" value={fmtMoney(totales.valorAPagar)} />
+            <KpiCard
+              icon={<TrendingUp size={16} />}
+              label="Utilidad"
+              value={fmtMoney(totales.utilidad)}
+              color={totales.lotesConVentas === 0 ? undefined : totales.utilidad >= 0 ? 'var(--color-primary)' : 'var(--color-danger)'}
+              sub={
+                totales.lotesConVentas === 0
+                  ? 'aún sin ventas'
+                  : `de ${totales.lotesConVentas} ${totales.lotesConVentas === 1 ? 'lote vendido' : 'lotes con ventas'}`
+              }
+            />
+            {totales.pendiente > 0 && (
+              <KpiCard
+                icon={<HandCoins size={16} />}
+                label="Por pagar"
+                value={fmtMoney(totales.pendiente)}
+                color="var(--color-danger)"
+                sub={desglosePendiente}
+              />
+            )}
           </section>
 
           <section className="card card-pad-0 hide-mobile">
@@ -193,17 +229,20 @@ export function DashboardPage() {
   );
 }
 
-function KpiCard({ icon, label, value, suffix }: { icon: React.ReactNode; label: string; value: string; suffix?: string }) {
+function KpiCard({
+  icon, label, value, suffix, color, sub,
+}: { icon: React.ReactNode; label: string; value: string; suffix?: string; color?: string; sub?: string }) {
   return (
     <div className="card kpi">
       <div className="kpi-head">
         <span>{label}</span>
         <span className="ico">{icon}</span>
       </div>
-      <div className="kpi-value">
+      <div className="kpi-value" style={color ? { color } : undefined}>
         {value}
         {suffix && <span style={{ fontSize: '0.95rem', color: 'var(--color-text-muted)', fontWeight: 500, marginLeft: 4 }}>{suffix}</span>}
       </div>
+      {sub && <div className="kpi-sub">{sub}</div>}
     </div>
   );
 }
@@ -225,7 +264,8 @@ function EmptyState() {
 function LoadingState() {
   return (
     <div className="stack">
-      <div className="grid-3">
+      <div className="grid-4">
+        <div className="card" style={{ height: 96, background: 'var(--color-surface-2)' }} />
         <div className="card" style={{ height: 96, background: 'var(--color-surface-2)' }} />
         <div className="card" style={{ height: 96, background: 'var(--color-surface-2)' }} />
         <div className="card" style={{ height: 96, background: 'var(--color-surface-2)' }} />

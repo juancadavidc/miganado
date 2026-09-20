@@ -55,16 +55,26 @@ router.get('/', async (req, res) => {
     orderBy: { fecha: 'desc' },
     include: {
       ...fincaInclude,
-      ventas: { select: { cantidad: true } },
+      ventas: { select: { cantidad: true, valorRecibido: true } },
+      gastos: { select: { monto: true, tipo: true, pagado: true } },
       _count: { select: { animales: true, fotos: true, gastos: true } },
     },
   });
-  // En el listado solo interesa cuántas cabezas ya salieron, no el detalle de
-  // cada venta: `cantidad` sigue siendo lo comprado y la resta son las que quedan.
+  // En el listado solo interesan los totales, no el detalle de cada venta o gasto:
+  // `cantidad` sigue siendo lo comprado y la resta son las que quedan. Ingresos y
+  // gastos alimentan la utilidad del dashboard; lo pendiente (por tipo) alimenta "Por pagar".
   res.json({
-    lotes: lotes.map(({ ventas, ...lote }) => ({
+    lotes: lotes.map(({ ventas, gastos, ...lote }) => ({
       ...lote,
       cantidadVendida: ventas.reduce((s, v) => s + v.cantidad, 0),
+      ingresosVentas: ventas.reduce((s, v) => s + Number(v.valorRecibido), 0),
+      gastosTotal: gastos.reduce((s, g) => s + Number(g.monto), 0),
+      gastosPendiente: gastos
+        .filter((g) => !g.pagado)
+        .reduce<Record<string, number>>((acc, g) => {
+          acc[g.tipo] = (acc[g.tipo] ?? 0) + Number(g.monto);
+          return acc;
+        }, {}),
     })),
   });
 });
