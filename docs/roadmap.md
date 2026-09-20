@@ -1,6 +1,6 @@
 # Roadmap — miganado
 
-> Última actualización: **2026-05-25**.
+> Última actualización: **2026-09-20**.
 > Este documento recoge la revisión de producto y la priorización de las
 > próximas funcionalidades, validada con el stakeholder ganadero (Don Aníbal,
 > ceba en Córdoba) a través del subagente `experto-cuidado-ganado`.
@@ -21,17 +21,17 @@ comprado, se engorda, se vende.
 
 ## Diagnóstico
 
-Hoy la app captura el paso 1 (la compra en feria/subasta) y, del paso 3, los
-**pesajes en el tiempo → GMD**. El `Lote` nace en la compra: la planilla
+Hoy la app captura el paso 1 (la compra en feria/subasta), del paso 3 los
+**pesajes en el tiempo → GMD**, y el paso 4 (las **ventas**, totales o parciales).
+El `Lote` nace en la compra: la planilla
 "Relación de Cuentas por Cobrar / ENTREGAS - CXC" del centro ganadero registra lo
-que el ganadero **paga** al comprar (el "valor a pagar" sale de su bolsillo). Del
-resto de la vida en finca falta el **potrero donde está el ganado** y la
-**sanidad**; y falta el paso 4 (la **venta**: todavía no se registra ninguna).
+que el ganadero **paga** al comprar (el "valor a pagar" sale de su bolsillo). De
+la vida en finca falta el **potrero donde está el ganado** y la **sanidad**.
 
-Consecuencia: la app es hoy **un libro de compras, no un sistema de manejo del
-hato**. No puede decir si el negocio dio o no dio plata porque, aunque conoce la
-inversión inicial (la compra), le faltan los costos de la ceba y —sobre todo— los
-**ingresos por venta**, que aún no existen en el sistema.
+Con las ventas registradas la app ya cierra el ciclo y dice, al vender todo el
+lote, si el negocio dio plata: **utilidad neta = ingresos − compra − gastos**.
+Lo que falta para la foto completa del negocio son el **costo por kilo
+producido** y los **reportes por finca y periodo**.
 
 > ⚠️ Deuda de semántica: el código todavía arrastra el supuesto de que el `Lote`
 > es una venta. En particular, el detalle del lote muestra un KPI
@@ -42,15 +42,15 @@ inversión inicial (la compra), le faltan los costos de la ceba y —sobre todo�
 ## El modelo objetivo: ciclo de vida del lote de ceba
 
 El corazón de la app es **"el lote que compré y estoy engordando"**, con tres
-momentos. Hoy existen el primero (la compra) y, del segundo, los **pesajes → GMD**:
+momentos. Hoy existen el primero (la compra), el tercero (la venta) y, del
+segundo, los **pesajes → GMD**:
 
 ```
    COMPRA (feria/subasta)  →   CEBA en la finca    →    VENTA en feria
-   [YA EXISTE]                 [EN CURSO]               [FALTA — hoy no existe]
-   fecha, n° feria, n° lote,   pesajes → GMD ✅,        peso venta, $/kg,
-   sexo, cantidad, peso,       potrero + rotación,      deducción, valor;
-   valor $/kg, valor a pagar   sanidad, gastos [FALTA]  puede ser PARCIAL
-   (lo que se paga al comprar)
+   [YA EXISTE]                 [EN CURSO]               [YA EXISTE]
+   fecha, n° feria, n° lote,   pesajes → GMD ✅,        peso salida, $/kg,
+   sexo, cantidad, peso,       potrero + rotación,      deducción, recibido;
+   valor $/kg, valor a pagar   sanidad [FALTA]          parcial ✅
 ```
 
 Al cerrarse el lote, la app calcula lo que **ninguna planilla del campo da hoy**:
@@ -114,17 +114,23 @@ El potrero sabe qué lote tiene adentro y por cuánto tiempo → base del semáf
 de rotación (Fase 3 de esa épica: aforo, días de descanso, alerta de
 sobrepastoreo).
 
-### 3. Venta del lote en feria (puede ser parcial) — *mediana*
-Hoy la venta **no existe** en la app (el `Lote` solo guarda la compra). Hay que
-**construir** el momento de venta: peso de salida, $/kg, deducción, valor. Un lote
-puede tener **varias salidas** (se sacan los más gordos y se deja el resto
-cebando); se cierra cuando cantidad vendida = cantidad comprada.
+### 3. Venta del lote en feria (puede ser parcial) — *mediana* — ✅ **HECHO**
+Entregado (modelo `Venta`, endpoints `POST/DELETE /api/ventas`, sección "Ventas"
+en el detalle del lote). Cada salida guarda fecha, cabezas, peso de salida
+(opcional: en feria a veces se vende por cabeza sin báscula), valor, deducción y
+valor recibido, más comprador y nota opcionales. Un lote tiene **varias salidas**;
+`cantidad` sigue siendo lo comprado y las cabezas en finca salen de restarle las
+ventas. El lote se cierra cuando cantidad vendida = cantidad comprada.
 
-### 4. Cierre del lote y utilidad real — *chica*
-Al cerrarse el lote, mostrar: **inversión total** (compra + gastos de ceba),
-**ingresos totales** (todas las ventas), **utilidad neta** y **costo por kilo
-producido**. Este es el número que el dueño revisa para saber si le fue bien o
-mal. Reusa datos ya capturados en la compra, los pesajes y la venta.
+También se puede **marcar vendido un animal individual** (el caso de sacar una
+sola cabeza): la venta lo apunta, esa cabeza descuenta del lote y el animal queda
+con su fecha y su plata. Vender es plata, así que —como los demás valores
+comerciales— solo lo hace el **dueño**; el cuidador las ve pero no las registra.
+
+### 4. Cierre del lote y utilidad real — *chica* — **parcial**
+Al cerrarse el lote ya se muestran **inversión total** (compra + gastos de ceba),
+**ingresos totales** (todas las ventas) y **utilidad neta**. Falta el **costo por
+kilo producido**, que cruza los pesajes con la inversión.
 
 ### 5. Sanidad — *mediana*
 Eventos de sanidad por lote: fecha, tipo (vacuna / desparasitación /

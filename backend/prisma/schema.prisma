@@ -125,6 +125,7 @@ model Lote {
   fotos       Foto[]
   anotaciones Anotacion[]
   pesajes     Pesaje[]
+  ventas      Venta[]
 
   @@index([fincaId, fecha])
 }
@@ -162,6 +163,7 @@ model Animal {
   fotos       Foto[]
   anotaciones Anotacion[]
   prenez      Prenez[]
+  venta       Venta?
 
   @@index([loteId])
 }
@@ -197,6 +199,32 @@ model Gasto {
   anotaciones Anotacion[]
 
   @@index([loteId])
+}
+
+// Salida (venta) de ganado del lote. Un lote tiene 1 entrada y N salidas: se
+// sacan las cabezas que ya están listas y el resto sigue cebándose, así que la
+// venta parcial es la norma. El lote queda abierto hasta que la suma de
+// cantidades vendidas iguala la cantidad comprada. Cuando la salida es de un
+// animal registrado individualmente, `animalId` lo apunta (y ese animal queda
+// vendido; por eso es único).
+model Venta {
+  id            String   @id @default(cuid())
+  loteId        String
+  lote          Lote     @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  animalId      String?  @unique
+  animal        Animal?  @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  fecha         DateTime
+  cantidad      Int      @default(1)
+  pesoTotal     Decimal? @db.Decimal(12, 2) // peso de salida; opcional: a veces se vende por cabeza, sin báscula
+  valorTotal    Decimal  @db.Decimal(14, 2) @default(0) // bruto, antes de deducciones
+  deduccion     Decimal  @db.Decimal(14, 2) @default(0) // comisión, báscula
+  valorRecibido Decimal  @db.Decimal(14, 2) @default(0) // neto que entra al bolsillo
+  comprador     String?
+  notas         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([loteId, fecha])
 }
 
 model Foto {
