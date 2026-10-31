@@ -44,21 +44,25 @@ router.post('/', async (req, res) => {
   }
 
   // Vender un animal registrado individualmente es siempre una cabeza, la suya.
+  // La cría separada de una VP no fue una cabeza comprada (vino al pie de la
+  // madre): su venta es plata del lote pero no descuenta cabezas.
   let cantidad = d.cantidad;
+  let esCria = false;
   if (d.animalId) {
     const animal = await prisma.animal.findUnique({
       where: { id: d.animalId },
-      select: { loteId: true, venta: { select: { id: true } } },
+      select: { loteId: true, madreId: true, venta: { select: { id: true } } },
     });
     if (!animal || animal.loteId !== d.loteId) {
       return res.status(404).json({ error: 'Animal no encontrado en este lote' });
     }
     if (animal.venta) return res.status(409).json({ error: 'Ese animal ya está vendido' });
-    cantidad = 1;
+    esCria = animal.madreId !== null;
+    cantidad = esCria ? 0 : 1;
   }
 
   const disponibles = await cabezasDisponibles(d.loteId);
-  if (disponibles <= 0) {
+  if (!esCria && disponibles <= 0) {
     return res.status(409).json({ error: 'El lote ya está vendido completo' });
   }
   if (cantidad > disponibles) {

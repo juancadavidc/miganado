@@ -67,6 +67,54 @@ router.put('/:id', async (req, res) => {
   res.json({ animal });
 });
 
+// Separar la cría de una VP: la VP se compró como una sola cabeza (vaca + cría al
+// pie). Al separar, la madre pasa a HV con su propio peso (obligatorio pesarla) y
+// la cría queda como animal aparte (HL/ML) enlazado a la madre, para venderla sola.
+const separarSchema = z.object({
+  pesoMadre: z.coerce.number().positive(),
+  criaSexo: criaSexoEnum.optional().nullable(),
+  pesoCria: z.coerce.number().positive().optional().nullable(),
+  identificador: z.string().optional().nullable(),
+});
+
+router.post('/:id/separar-cria', async (req, res) => {
+  const parsed = separarSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const madre = await prisma.animal.findUnique({
+    where: { id: req.params.id },
+    include: {
+      venta: { select: { id: true } },
+      lote: { select: { finca: { select: { duenoId: true, cuidadorId: true } } } },
+    },
+  });
+  if (!madre || !puedeOperar(madre.lote.finca, req.user!.userId)) {
+    return res.status(404).json({ error: 'Animal no encontrado' });
+  }
+  if (madre.sexo !== 'VP') return res.status(409).json({ error: 'Solo se separa la cría de una vaca parida (VP)' });
+  if (madre.venta) return res.status(409).json({ error: 'Esa vaca ya está vendida' });
+
+  const criaSexo = parsed.data.criaSexo ?? madre.criaSexo;
+  if (!criaSexo) return res.status(400).json({ error: 'Indica si la cría es macho o hembra' });
+
+  const [, cria] = await prisma.$transaction([
+    prisma.animal.update({
+      where: { id: madre.id },
+      data: { sexo: 'HV', peso: parsed.data.pesoMadre, criaSexo: null },
+    }),
+    prisma.animal.create({
+      data: {
+        loteId: madre.loteId,
+        madreId: madre.id,
+        identificador: parsed.data.identificador || (madre.identificador ? `Cría de ${madre.identificador}` : null),
+        sexo: criaSexo === 'H' ? 'HL' : 'ML',
+        peso: parsed.data.pesoCria ?? null,
+      },
+    }),
+  ]);
+  res.status(201).json({ cria });
+});
+
 router.delete('/:id', async (req, res) => {
   const existing = await prisma.animal.findUnique({
     where: { id: req.params.id },

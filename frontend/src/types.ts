@@ -165,6 +165,7 @@ export type Animal = {
   sexo: Sexo;
   peso: string | null;
   criaSexo: CriaSexo | null;
+  madreId: string | null; // cría separada de una VP
   notas: string | null;
   fotos?: Foto[];
   anotaciones?: Anotacion[];

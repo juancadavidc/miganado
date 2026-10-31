@@ -108,6 +108,7 @@ Variables de entorno (ver `backend/.env.example`):
 | POST | `/api/animales`      | crear animal individual en un lote |
 | PUT  | `/api/animales/:id`  | editar animal |
 | DELETE | `/api/animales/:id`| eliminar animal |
+| POST | `/api/animales/:id/separar-cria` | separar la cría de una VP: pide el peso de la madre (pasa a HV) y crea la cría (HL/ML) ligada a ella |
 | POST | `/api/prenez`        | registrar preñez de una vaca (VP) |
 | PUT  | `/api/prenez/:id`    | completar/editar evento (parto + crías, o aborto) |
 | DELETE | `/api/prenez/:id`  | eliminar evento de preñez |
@@ -189,9 +190,11 @@ cd backend && npm run build    # dist/
   cabezas pesadas y peso total. La app calcula el promedio por cabeza y la
   **ganancia media diaria (GMD)** entre pesajes consecutivos; si la compra tiene
   peso de entrada, la GMD arranca desde ahí.
-- **Venta** — **salida** de ganado del lote: fecha, cabezas, peso de salida
-  (opcional — a veces se vende por cabeza, sin báscula), valor de la venta,
-  deducción (comisión, báscula) y valor recibido; opcionalmente comprador y nota.
+- **Venta** — **salida** de ganado del lote: fecha, cabezas, peso de salida,
+  valor de la venta, deducción (comisión, báscula) y valor recibido; opcionalmente
+  comprador y nota. El ganado se vende **al kilo**: el formulario pide peso de
+  salida y precio por kilo, y calcula el valor (kilos × $/kg). En la base el peso
+  sigue siendo opcional para no romper ventas viejas.
   Un lote tiene **1 entrada y N salidas**: se venden las cabezas que ya están
   listas y el resto sigue cebándose, así que la **venta parcial es la norma**. El
   lote se cierra cuando la suma de cabezas vendidas iguala la comprada, y ahí se
@@ -203,15 +206,25 @@ cd backend && npm run build    # dist/
   vendidas (`utilidadVendido` en `frontend/src/lib/ventas.ts`). En un lote cerrado
   coincide con su utilidad neta; en uno parcial es un estimado (asume el mismo costo
   por cabeza).
+  En la tabla del dashboard, la columna **Vendido en** muestra lo recibido por cada
+  lote, y al tocar un lote su detalle completo se abre en un **modal** sin salir del
+  dashboard (la ruta `/lotes/:id` sigue funcionando).
   La card **Valor a pagar** del dashboard cuenta solo lo que queda en finca (la
   compra prorrateada por las cabezas sin vender) y la card **Vendido** suma lo
   recibido en todas las ventas, con las cabezas vendidas.
 - **Animal** — animales individuales dentro de un lote, con su propio peso / sexo
   / identificador. Se puede marcar vendido uno solo, sin tocar el resto del lote.
+  **Separar cría:** una VP se compra como una sola cabeza (vaca + cría al pie). Al
+  separarla se pesa la madre (obligatorio) y pasa a **HV**; la cría queda como
+  animal aparte (**HL** hembra / **ML** macho) con `madreId` apuntando a la madre,
+  para venderla sola con trazabilidad. Como la cría no fue una cabeza comprada, su
+  venta queda con `cantidad = 0`: suma a los ingresos del lote pero no descuenta
+  cabezas, y su plata entra en la utilidad cuando se venda la madre.
 - **Prenez** — evento reproductivo de una **vaca parida (VP)**: arranca cuando se
   confirma la preñez (fecha de diagnóstico) y se completa al parir (fecha de parto
   + cuántas crías macho/hembra) o al abortar. Una vaca acumula varios → es su
-  histórico de partos. Las crías se **cuentan**, no se crean como animales aparte.
+  histórico de partos. Las crías se **cuentan**, no se crean como animales aparte
+  (salvo al **separar la cría** de una VP, ver `Animal`).
 - **Gasto** — gastos asociados al lote. Cada uno tiene un **tipo** de un catálogo
   fijo (para poder filtrar y sumar por tipo), un detalle opcional y un estado
   **pagado / pendiente**: la comisión del cuidador, por ejemplo, a veces se paga en

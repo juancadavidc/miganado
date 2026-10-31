@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Beef, Scale, Wallet, Banknote, TrendingUp, HandCoins, ArrowRight, PackageOpen, AlertCircle, Upload } from 'lucide-react';
+import { Plus, X, Beef, Scale, Wallet, Banknote, TrendingUp, HandCoins, ArrowRight, PackageOpen, AlertCircle, Upload } from 'lucide-react';
 import { api } from '../api/client';
 import type { Lote, TipoGasto } from '../types';
 import { TIPO_GASTO_LABELS } from '../types';
@@ -8,6 +8,7 @@ import { fmtDate, fmtMoney, fmtNum } from '../lib/format';
 import { SexoBadge } from '../components/SexoBadge';
 import { useAuth } from '../auth/AuthContext';
 import { utilidadVendido } from '../lib/ventas';
+import { LoteDetalleVista } from './LoteDetallePage';
 
 // Lo comprado no cambia al vender; lo que baja son las cabezas que quedan cebándose.
 function enFinca(lote: Lote): number {
@@ -69,13 +70,18 @@ export function DashboardPage() {
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [abierto, setAbierto] = useState<string | null>(null);
 
-  useEffect(() => {
+  const cargar = useCallback(() => {
     api<{ lotes: Lote[] }>('/api/lotes')
       .then((d) => setLotes(d.lotes))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
+  useEffect(() => { cargar(); }, [cargar]);
+
+  // Al cerrar el modal se recargan los totales: adentro pudo venderse o gastarse algo.
+  const cerrarLote = useCallback(() => { setAbierto(null); cargar(); }, [cargar]);
 
   const totales = lotes.reduce(
     (acc, l) => {
@@ -184,13 +190,14 @@ export function DashboardPage() {
                   <th className="num">$/kg</th>
                   <th className="num">Valor total</th>
                   <th className="num">A pagar</th>
+                  <th className="num">Vendido en</th>
                   <th>Referencia</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 {lotes.map((l) => (
-                  <tr key={l.id}>
+                  <tr key={l.id} className="row-clickable" onClick={() => setAbierto(l.id)}>
                     <td>{fmtDate(l.fecha)}</td>
                     <td>{l.numeroFeria ?? '—'}</td>
                     <td>{l.loteNumero ?? '—'}<RolTag lote={l} meId={meId} /></td>
@@ -200,11 +207,21 @@ export function DashboardPage() {
                     <td className="num">{fmtMoney(precioKgCompra(l))}</td>
                     <td className="num">{fmtMoney(l.valorTotal)}</td>
                     <td className="num"><strong>{fmtMoney(l.valorAPagar)}</strong></td>
+                    <td className="num">
+                      {(l.ingresosVentas ?? 0) > 0
+                        ? <strong style={{ color: 'var(--color-primary)' }}>{fmtMoney(l.ingresosVentas)}</strong>
+                        : <span className="muted">—</span>}
+                    </td>
                     <td>{l.referencia ?? '—'}</td>
                     <td>
-                      <Link to={`/lotes/${l.id}`} aria-label={`Abrir lote ${l.loteNumero ?? l.id.slice(0, 6)}`}>
+                      <button
+                        type="button"
+                        className="btn-ghost btn-icon btn-sm"
+                        onClick={(e) => { e.stopPropagation(); setAbierto(l.id); }}
+                        aria-label={`Abrir lote ${l.loteNumero ?? l.id.slice(0, 6)}`}
+                      >
                         <ArrowRight size={16} />
-                      </Link>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -214,7 +231,7 @@ export function DashboardPage() {
 
           <section className="stack show-mobile">
             {lotes.map((l) => (
-              <Link key={l.id} to={`/lotes/${l.id}`} className="lote-card">
+              <button key={l.id} type="button" className="lote-card" onClick={() => setAbierto(l.id)}>
                 <div className="lote-card-head">
                   <div>
                     <div style={{ fontWeight: 700 }}>{fmtDate(l.fecha)}</div>
@@ -246,12 +263,55 @@ export function DashboardPage() {
                     <dt>A pagar</dt>
                     <dd style={{ color: 'var(--color-primary)' }}>{fmtMoney(l.valorAPagar)}</dd>
                   </div>
+                  {(l.ingresosVentas ?? 0) > 0 && (
+                    <div>
+                      <dt>Vendido en</dt>
+                      <dd style={{ color: 'var(--color-primary)' }}>{fmtMoney(l.ingresosVentas)}</dd>
+                    </div>
+                  )}
                 </dl>
-              </Link>
+              </button>
             ))}
           </section>
         </>
       )}
+      {abierto && <LoteModal id={abierto} onClose={cerrarLote} />}
+    </div>
+  );
+}
+
+function LoteModal({ id, onClose }: { id: string; onClose: () => void }) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      // Si hay una confirmación abierta encima, Escape la cierra a ella, no al lote.
+      if (e.key === 'Escape' && document.querySelectorAll('[aria-modal="true"]').length === 1) onClose();
+    }
+    document.addEventListener('keydown', onKey);
+    const { overflow } = document.body.style;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = overflow;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="scrim lote-scrim"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="lote-detalle-titulo"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="lote-modal">
+        {/* Fija arriba: en el celular el lote es largo y hay que poder cerrar desde cualquier parte */}
+        <div className="lote-modal-bar">
+          <button type="button" className="btn-secondary btn-sm" onClick={onClose} aria-label="Cerrar">
+            <X size={16} aria-hidden="true" />Cerrar
+          </button>
+        </div>
+        <LoteDetalleVista id={id} onClose={onClose} enModal />
+      </div>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Trash2, Plus, X, Upload, Camera, ImageOff,
   AlertCircle, Receipt, ListOrdered, Calendar, MessageSquare, Users,
-  Scale, Info, Banknote, CheckCircle2,
+  Scale, Info, Banknote, CheckCircle2, Split,
 } from 'lucide-react';
 import { api, ApiError } from '../api/client';
 import type { Animal, CriaSexo, Foto, Gasto, LoteDetalle, Sexo, TipoGasto, Venta } from '../types';
@@ -23,6 +23,15 @@ const TIPOS_GASTO = Object.keys(TIPO_GASTO_LABELS) as TipoGasto[];
 export function LoteDetallePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  if (!id) return null;
+  return <LoteDetalleVista id={id} onClose={() => navigate('/')} />;
+}
+
+// El detalle completo del lote. Se usa como página (/lotes/:id) y dentro del
+// modal del dashboard (`enModal`), donde "volver" pasa a ser "cerrar".
+export function LoteDetalleVista({
+  id, onClose, enModal = false,
+}: { id: string; onClose: () => void; enModal?: boolean }) {
   const { user } = useAuth();
   const [lote, setLote] = useState<LoteDetalle | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +64,7 @@ export function LoteDetallePage() {
     if (!ok) return;
     try {
       await api(`/api/lotes/${lote.id}`, { method: 'DELETE' });
-      navigate('/');
+      onClose();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error');
     }
@@ -81,11 +90,13 @@ export function LoteDetallePage() {
     <div className="container">
       <header className="page-header">
         <div className="row" style={{ gap: 'var(--space-2)' }}>
-          <button type="button" className="btn-ghost btn-icon" onClick={() => navigate('/')} aria-label="Volver al dashboard">
-            <ArrowLeft size={18} />
-          </button>
+          {!enModal && (
+            <button type="button" className="btn-ghost btn-icon" onClick={onClose} aria-label="Volver al dashboard">
+              <ArrowLeft size={18} />
+            </button>
+          )}
           <div>
-            <h1>Lote {lote.loteNumero ?? '—'}</h1>
+            <h1 id="lote-detalle-titulo">Lote {lote.loteNumero ?? '—'}</h1>
             <p className="subtitle row" style={{ gap: 'var(--space-2)' }}>
               <Calendar size={13} aria-hidden="true" />
               {fmtDate(lote.fecha)}
@@ -108,12 +119,14 @@ export function LoteDetallePage() {
             </p>
           </div>
         </div>
-        {esDueno && (
-          <button className="btn-danger" onClick={onDelete}>
-            <Trash2 size={16} aria-hidden="true" />
-            Eliminar lote
-          </button>
-        )}
+        <div className="row" style={{ gap: 'var(--space-2)' }}>
+          {esDueno && (
+            <button className="btn-danger" onClick={onDelete}>
+              <Trash2 size={16} aria-hidden="true" />
+              Eliminar lote
+            </button>
+          )}
+        </div>
       </header>
 
       {lote.sexo === 'VP' && (lote.criasMacho > 0 || lote.criasHembra > 0) && (
@@ -475,7 +488,9 @@ function SeccionVentas({
   async function onDelete(venta: Venta) {
     const ok = await ask({
       title: '¿Eliminar esta venta?',
-      description: `Las ${venta.cantidad} ${venta.cantidad === 1 ? 'cabeza vuelve' : 'cabezas vuelven'} a contar como en finca.`,
+      description: venta.cantidad === 0
+        ? 'La cría vuelve a contar como en finca.'
+        : `Las ${venta.cantidad} ${venta.cantidad === 1 ? 'cabeza vuelve' : 'cabezas vuelven'} a contar como en finca.`,
       confirmLabel: 'Eliminar',
       variant: 'danger',
     });
@@ -574,7 +589,7 @@ function SeccionVentas({
                         </div>
                       )}
                     </td>
-                    <td className="num">{v.cantidad}</td>
+                    <td className="num">{v.cantidad === 0 ? <span className="muted">cría</span> : v.cantidad}</td>
                     <td className="num">{v.pesoTotal === null ? <span className="muted">—</span> : `${fmtNum(v.pesoTotal)} kg`}</td>
                     <td className="num tabnum">{fmtPrecioKg(precioPorKg(v))}</td>
                     <td className="num">
@@ -626,18 +641,19 @@ function VentaForm({
   const [fecha, setFecha] = useState(() => toInputDate(new Date().toISOString()));
   const [cantidad, setCantidad] = useState(animal ? '1' : '1');
   const [pesoTotal, setPesoTotal] = useState(animal?.peso ? String(Number(animal.peso)) : '');
-  const [valorTotal, setValorTotal] = useState('');
+  const [precioKgInput, setPrecioKgInput] = useState('');
   const [deduccion, setDeduccion] = useState('');
   const [comprador, setComprador] = useState('');
   const [notas, setNotas] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const bruto = Number(valorTotal) || 0;
+  // El ganado se vende al kilo: el valor sale de kilos × precio por kilo.
+  const kg = Number(pesoTotal) || 0;
+  const precioKg = Number(precioKgInput) || 0;
+  const bruto = Math.round(kg * precioKg);
   const desc = Number(deduccion) || 0;
   const recibido = bruto - desc;
-  const kg = Number(pesoTotal) || 0;
-  const precioKg = kg > 0 && bruto > 0 ? bruto / kg : null;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -655,7 +671,7 @@ function VentaForm({
           animalId: animal?.id ?? null,
           fecha,
           cantidad: animal ? 1 : Number(cantidad),
-          pesoTotal: pesoTotal === '' ? null : Number(pesoTotal),
+          pesoTotal: kg,
           valorTotal: bruto,
           deduccion: desc,
           valorRecibido: recibido,
@@ -679,6 +695,8 @@ function VentaForm({
         padding: 'var(--space-3)',
         borderRadius: 'var(--radius-lg)',
         margin: 'var(--space-2) 0 var(--space-3)',
+        // Dentro de la tabla de animales: que no se salga de la pantalla del celular.
+        ...(animal && { position: 'sticky' as const, left: 0, maxWidth: 'calc(100vw - 4rem)' }),
       }}
     >
       <div className="grid-3">
@@ -689,7 +707,7 @@ function VentaForm({
         <div className="field">
           <label htmlFor="venta-cantidad">Cabezas</label>
           {animal ? (
-            <input id="venta-cantidad" type="number" value={1} disabled />
+            <input id="venta-cantidad" type="number" value={animal.madreId ? 0 : 1} disabled />
           ) : (
             <input
               id="venta-cantidad"
@@ -703,7 +721,9 @@ function VentaForm({
             />
           )}
           <div className="helper">
-            {animal ? 'La venta de un animal individual es una cabeza' : `Disponibles: ${maxCabezas}`}
+            {animal?.madreId
+              ? 'La cría vino al pie de la madre: no descuenta cabezas del lote'
+              : animal ? 'La venta de un animal individual es una cabeza' : `Disponibles: ${maxCabezas}`}
           </div>
         </div>
         <div className="field">
@@ -711,28 +731,31 @@ function VentaForm({
           <input
             id="venta-peso"
             type="number"
+            inputMode="decimal"
             step="0.01"
-            min={0}
+            min={0.01}
             value={pesoTotal}
             onChange={(e) => setPesoTotal(e.target.value)}
-            placeholder="opcional"
+            required
+            placeholder="ej. 430"
           />
-          <div className="helper">Dejalo vacío si vendiste por cabeza, sin báscula</div>
+          <div className="helper">Total de las cabezas que salen, pesadas en báscula</div>
         </div>
       </div>
 
       <div className="grid-2">
         <div className="field">
-          <label htmlFor="venta-valor">Valor de la venta ($)</label>
+          <label htmlFor="venta-precio-kg">Precio por kilo ($/kg)</label>
           <input
-            id="venta-valor"
+            id="venta-precio-kg"
             type="number"
+            inputMode="decimal"
             step="0.01"
-            min={0}
-            value={valorTotal}
-            onChange={(e) => setValorTotal(e.target.value)}
+            min={0.01}
+            value={precioKgInput}
+            onChange={(e) => setPrecioKgInput(e.target.value)}
             required
-            placeholder="ej. 3200000"
+            placeholder="ej. 9000"
           />
         </div>
         <div className="field">
@@ -749,12 +772,21 @@ function VentaForm({
         </div>
       </div>
 
-      <div className="callout row-between" style={{ marginBottom: 'var(--space-3)' }}>
-        <span>Te queda</span>
-        <strong className="tabnum" style={{ color: recibido < 0 ? 'var(--color-danger)' : 'var(--color-primary)' }}>
-          {fmtMoney(recibido)}
-          {precioKg !== null && <span className="muted" style={{ fontWeight: 400 }}> · {fmtPrecioKg(precioKg)}</span>}
-        </strong>
+      <div className="callout" style={{ marginBottom: 'var(--space-3)' }}>
+        <div className="row-between">
+          <span>Valor de la venta</span>
+          <span className="tabnum">
+            {kg > 0 && precioKg > 0
+              ? <>{fmtNum(kg)} kg × {fmtPrecioKg(precioKg)} = <strong>{fmtMoney(bruto)}</strong></>
+              : <span className="muted">kilos × precio por kilo</span>}
+          </span>
+        </div>
+        <div className="row-between">
+          <span>Te queda</span>
+          <strong className="tabnum" style={{ color: recibido < 0 ? 'var(--color-danger)' : 'var(--color-primary)' }}>
+            {fmtMoney(recibido)}
+          </strong>
+        </div>
       </div>
 
       <div className="grid-2">
@@ -908,16 +940,20 @@ function SeccionAnimales({
                 <th>Identificador</th>
                 <th>Sexo</th>
                 <th className="num">Peso (kg)</th>
+                <th className="num">Vendido en</th>
                 <th>Fotos</th>
                 <th>Notas</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {lote.animales.map((a) => (
+              {ordenarConCrias(lote.animales).map((a) => (
                 <AnimalRow
                   key={a.id}
                   animal={a}
+                  madre={a.madreId ? lote.animales.find((m) => m.id === a.madreId) ?? null : null}
+                  crias={lote.animales.filter((c) => c.madreId === a.id)}
+                  ventas={lote.ventas}
                   loteId={lote.id}
                   esDueno={esDueno}
                   venta={lote.ventas.find((v) => v.animalId === a.id) ?? null}
@@ -932,6 +968,13 @@ function SeccionAnimales({
       )}
     </section>
   );
+}
+
+// Cada cría separada va justo debajo de su madre, para leer la trazabilidad de un vistazo.
+function ordenarConCrias(animales: Animal[]): Animal[] {
+  const ids = new Set(animales.map((a) => a.id));
+  const raiz = animales.filter((a) => !a.madreId || !ids.has(a.madreId));
+  return raiz.flatMap((a) => [a, ...animales.filter((c) => c.madreId === a.id)]);
 }
 
 function AnimalForm({ loteId, defaultSexo, onDone }: { loteId: string; defaultSexo: Sexo; onDone: () => void }) {
@@ -1020,9 +1063,12 @@ function AnimalForm({ loteId, defaultSexo, onDone }: { loteId: string; defaultSe
 }
 
 function AnimalRow({
-  animal, loteId, esDueno, venta, disponibles, onChange, ask,
+  animal, madre, crias, ventas, loteId, esDueno, venta, disponibles, onChange, ask,
 }: {
   animal: Animal;
+  madre: Animal | null;
+  crias: Animal[];
+  ventas: Venta[];
   loteId: string;
   esDueno: boolean;
   venta: Venta | null;
@@ -1032,6 +1078,7 @@ function AnimalRow({
 }) {
   const [uploading, setUploading] = useState(false);
   const [vendiendo, setVendiendo] = useState(false);
+  const [separando, setSeparando] = useState(false);
   const anotaciones = animal.anotaciones ?? [];
 
   async function onDelete() {
@@ -1069,9 +1116,22 @@ function AnimalRow({
               <span className="badge" style={{ background: 'var(--color-primary-soft)', color: 'var(--color-primary)' }}>
                 <CheckCircle2 size={11} aria-hidden="true" /> Vendido
               </span>
-              <span className="kpi-sub">{fmtDate(venta.fecha)} · {fmtMoney(venta.valorRecibido)}</span>
+              <span className="kpi-sub">{fmtDate(venta.fecha)}</span>
             </div>
           )}
+          {animal.madreId && (
+            <div className="kpi-sub">
+              ↳ {animal.sexo === 'HL' ? 'Hija' : 'Hijo'} de {madre?.identificador ?? 'su madre'}
+            </div>
+          )}
+          {crias.map((c) => {
+            const vc = ventas.find((v) => v.animalId === c.id);
+            return (
+              <div key={c.id} className="kpi-sub">
+                Cría {c.sexo === 'HL' ? 'hembra' : 'macho'}: {vc ? `vendida ${fmtMoney(vc.valorRecibido)}` : 'en finca'}
+              </div>
+            );
+          })}
         </td>
         <td>
           <SexoBadge
@@ -1085,6 +1145,14 @@ function AnimalRow({
           )}
         </td>
         <td className="num">{animal.peso ? fmtNum(animal.peso) : '—'}</td>
+        <td className="num">
+          {venta ? (
+            <>
+              <strong>{fmtMoney(venta.valorRecibido)}</strong>
+              {precioPorKg(venta) !== null && <div className="kpi-sub tabnum">{fmtPrecioKg(precioPorKg(venta))}</div>}
+            </>
+          ) : <span className="muted">—</span>}
+        </td>
         <td>
           <div className="row" style={{ gap: 'var(--space-2)' }}>
             {(animal.fotos ?? []).slice(0, 3).map((f) => (
@@ -1105,15 +1173,6 @@ function AnimalRow({
         <td>{animal.notas ?? <span className="muted">—</span>}</td>
         <td>
           <div className="row" style={{ gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
-            {esDueno && !venta && disponibles > 0 && (
-              <button
-                type="button"
-                className={vendiendo ? 'btn-ghost btn-sm' : 'btn-secondary btn-sm'}
-                onClick={() => setVendiendo((v) => !v)}
-              >
-                {vendiendo ? <><X size={12} aria-hidden="true" />Cancelar</> : <><Banknote size={12} aria-hidden="true" />Vender</>}
-              </button>
-            )}
             <button
               type="button"
               className="btn-danger btn-icon btn-sm"
@@ -1126,7 +1185,13 @@ function AnimalRow({
         </td>
       </tr>
       <tr>
-        <td colSpan={6} style={{ paddingTop: 0 }}>
+        <td colSpan={7} style={{ paddingTop: 0 }}>
+          {separando && (
+            <SepararCriaForm
+              animal={animal}
+              onDone={() => { setSeparando(false); onChange(); }}
+            />
+          )}
           {vendiendo && (
             <VentaForm
               loteId={loteId}
@@ -1143,6 +1208,24 @@ function AnimalRow({
               anotaciones={anotaciones}
               onChange={onChange}
             />
+            {esDueno && !venta && (disponibles > 0 || animal.madreId) && (
+              <button
+                type="button"
+                className={vendiendo ? 'btn-ghost btn-sm' : 'btn-secondary btn-sm'}
+                onClick={() => { setVendiendo((v) => !v); setSeparando(false); }}
+              >
+                {vendiendo ? <><X size={12} aria-hidden="true" />Cancelar</> : <><Banknote size={12} aria-hidden="true" />Vender</>}
+              </button>
+            )}
+            {animal.sexo === 'VP' && !venta && (
+              <button
+                type="button"
+                className={separando ? 'btn-ghost btn-sm' : 'btn-secondary btn-sm'}
+                onClick={() => { setSeparando((s) => !s); setVendiendo(false); }}
+              >
+                {separando ? <><X size={12} aria-hidden="true" />Cancelar</> : <><Split size={12} aria-hidden="true" />Separar cría</>}
+              </button>
+            )}
             {animal.sexo === 'VP' && (
               <PrenezControl
                 animalId={animal.id}
@@ -1154,6 +1237,105 @@ function AnimalRow({
         </td>
       </tr>
     </>
+  );
+}
+
+// La VP se compró como una cabeza (vaca + cría al pie). Separar exige pesar a la
+// madre; la cría se pesa cuando se venda, por eso aquí es opcional.
+function SepararCriaForm({ animal, onDone }: { animal: Animal; onDone: () => void }) {
+  const [pesoMadre, setPesoMadre] = useState('');
+  const [criaSexo, setCriaSexo] = useState<CriaSexo | ''>(animal.criaSexo ?? '');
+  const [pesoCria, setPesoCria] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      await api(`/api/animales/${animal.id}/separar-cria`, {
+        method: 'POST',
+        body: {
+          pesoMadre: Number(pesoMadre),
+          criaSexo: criaSexo || null,
+          pesoCria: pesoCria === '' ? null : Number(pesoCria),
+        },
+      });
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={onSubmit}
+      style={{
+        background: 'var(--color-surface-2)',
+        padding: 'var(--space-3)',
+        borderRadius: 'var(--radius-lg)',
+        margin: 'var(--space-2) 0 var(--space-3)',
+        position: 'sticky',
+        left: 0,
+        maxWidth: 'calc(100vw - 4rem)',
+      }}
+    >
+      <div className="grid-3">
+        <div className="field">
+          <label htmlFor={`sep-madre-${animal.id}`}>Peso de la madre (kg)</label>
+          <input
+            id={`sep-madre-${animal.id}`}
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            min={1}
+            value={pesoMadre}
+            onChange={(e) => setPesoMadre(e.target.value)}
+            required
+            autoFocus
+          />
+        </div>
+        <div className="field">
+          <label htmlFor={`sep-sexo-${animal.id}`}>La cría es</label>
+          <select
+            id={`sep-sexo-${animal.id}`}
+            value={criaSexo}
+            onChange={(e) => setCriaSexo(e.target.value as CriaSexo | '')}
+            required
+          >
+            <option value="" disabled>— elegir —</option>
+            <option value="H">Hembra (queda HL)</option>
+            <option value="M">Macho (queda ML)</option>
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor={`sep-cria-${animal.id}`}>Peso de la cría (opcional)</label>
+          <input
+            id={`sep-cria-${animal.id}`}
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            min={0}
+            value={pesoCria}
+            onChange={(e) => setPesoCria(e.target.value)}
+          />
+        </div>
+      </div>
+      <p className="kpi-sub" style={{ margin: '0 0 var(--space-2)' }}>
+        La vaca pasa a HV con este peso y la cría queda como animal aparte, ligada a su madre.
+      </p>
+      {error && (
+        <div className="error" role="alert">
+          <AlertCircle size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} /> {error}
+        </div>
+      )}
+      <div className="row" style={{ justifyContent: 'flex-end' }}>
+        <button type="submit" disabled={loading}>{loading ? 'Separando…' : 'Separar cría'}</button>
+      </div>
+    </form>
   );
 }
 
