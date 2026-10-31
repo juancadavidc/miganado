@@ -169,6 +169,11 @@ model Animal {
   sexo       Sexo
   peso       Decimal? @db.Decimal(12, 2)
   criaSexo   CriaSexo?
+  // Cría que vino al pie de una VP y se separó para venderse sola: apunta a su
+  // madre (trazabilidad). No es una cabeza comprada, así que no cuenta en el lote.
+  madreId    String?
+  madre      Animal?  @relation("MadreCria", fields: [madreId], references: [id], onDelete: SetNull)
+  crias      Animal[] @relation("MadreCria")
   notas      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -179,6 +184,7 @@ model Animal {
   venta       Venta?
 
   @@index([loteId])
+  @@index([madreId])
 }
 
 // Evento reproductivo de una vaca: arranca cuando se le confirma la preñez y se
