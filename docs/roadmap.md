@@ -107,7 +107,12 @@ lote (venta parcial o baja).
 > 22 novillos, sobre 90 días y a ~8.200 $/kg, vale **más de 4 millones de pesos**.
 > Mostrarle eso al dueño en tiempo real justifica construir bien este módulo.
 
-### 2. Vínculo lote ↔ potrero (con rotaciones) — *mediana* — **siguiente**
+### 2. Vínculo lote ↔ potrero (con rotaciones) — *mediana* — **parcial**
+Entregado: el lote apunta al potrero donde está hoy (`potreroId` + `potreroDesde`,
+`POST /api/lotes/:id/mover`), el potrero cambia solo a ocupado/descanso y el mapa
+vivo lo muestra. Falta el **historial de rotaciones** (de dónde venía y cuánto
+estuvo en cada potrero).
+
 El potrero ya existe; falta el vínculo "este lote está en este potrero" y el
 historial de rotaciones. Corresponde a la **Fase 4 de `docs/potreros-epica.md`**.
 El potrero sabe qué lote tiene adentro y por cuánto tiempo → base del semáforo
@@ -161,6 +166,13 @@ las alertas (rotación de potrero, vencimiento de vacuna, sugerencia de venta):
 
 > No se construye un sistema de notificaciones genérico y sobre-configurable.
 > Los canales son estos dos: PWA push y Telegram por cliente.
+
+## Agente por Telegram — siguientes pasos
+
+- Fotos por el chat (planilla de feria → OCR que ya existe; fotos de animales).
+- Notas de voz (transcribir y registrar).
+- Guardar la conversación en base para que sobreviva reinicios del backend.
+- Usar el mismo bot para las alertas (rotación, vacunas) descritas arriba.
 
 ## Lo que NO se construye (para este negocio)
 

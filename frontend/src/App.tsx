@@ -11,6 +11,7 @@ import { TrasladosPage } from './pages/TrasladosPage';
 import { FincasPage } from './pages/FincasPage';
 import { FincaDetallePage } from './pages/FincaDetallePage';
 import { BulkPage } from './pages/BulkPage';
+import { MapaPage } from './pages/MapaPage';
 
 function Protected({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -91,6 +92,17 @@ export default function App() {
             </Protected>
           }
         />
+        {['/mapa', '/mapa/:fincaId'].map((path) => (
+          <Route
+            key={path}
+            path={path}
+            element={
+              <Protected>
+                <MapaPage />
+              </Protected>
+            }
+          />
+        ))}
         <Route path="/potreros" element={<Navigate to="/fincas" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

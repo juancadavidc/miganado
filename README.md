@@ -9,6 +9,11 @@ varias salidas, hasta cerrar el lote y ver la utilidad).
 
 Inspirada en la planilla **Centro Comercial Ganadero SAS** (Buenavista, Córdoba).
 
+**Manejo por chat:** los movimientos (compras, pesajes, gastos, fletes, ventas,
+cambios de potrero) se registran hablándole a un **agente por Telegram**, y la app
+web queda para **ver**: un mapa vivo con los potreros y el ganado caminando en cada
+uno; al tocar un animal se abre su ficha. Ver [Agente por Telegram](#agente-por-telegram).
+
 > ¿Hacia dónde va? Mira [`docs/roadmap.md`](docs/roadmap.md) para la priorización
 > de las próximas funcionalidades (rotación de potreros, sanidad, reportes de
 > rentabilidad).
@@ -34,12 +39,13 @@ miganado/
 │   │   ├── routes/         # auth, fincas, potreros, lotes, lotesImport,
 │   │   │                   #   animales, gastos, pesajes, fotos, anotaciones,
 │   │   │                   #   traslados, bulk
+│   │   ├── telegram/       # bot (long polling), agente Claude y sus tools
 │   │   ├── middleware/auth.ts
 │   │   └── lib/            # prisma, env, r2 (Cloudflare), fincaAccess (permisos)
 │   └── uploads/            # (legado; las fotos hoy van a R2)
 └── frontend/               # SPA Vite + React (PWA)
     └── src/
-        ├── pages/          # Login, Registro, Dashboard, Fincas, FincaDetalle,
+        ├── pages/          # Login, Registro, Mapa, Dashboard, Fincas, FincaDetalle,
         │                   #   LoteForm, LoteImport, LoteDetalle, Traslados, Bulk
         ├── components/      # Navbar, PotreroMapa, Anotaciones, Prenez, SexoBadge, ...
         ├── auth/           # contexto auth
@@ -76,6 +82,9 @@ Variables de entorno (ver `backend/.env.example`):
 | `JWT_SECRET`, `JWT_EXPIRES_IN` | firma/expiración del token |
 | `CORS_ORIGIN` | origen permitido del frontend |
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | OCR de planillas con Claude Vision |
+| `TELEGRAM_BOT_TOKEN` | token del bot de Telegram (de @BotFather); vacío = bot apagado |
+| `AGENTE_MODEL` | modelo del agente del chat (default `claude-opus-5-5`; usa `ANTHROPIC_API_KEY`) |
+| `APP_URL` | URL pública de la app web, para los links al mapa que comparte el agente |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL` | almacenamiento de fotos en Cloudflare R2 |
 
 ### Endpoints REST
@@ -103,6 +112,8 @@ Variables de entorno (ver `backend/.env.example`):
 | POST | `/api/lotes`         | crear lote |
 | PUT  | `/api/lotes/:id`     | editar lote (campos según rol dueño/cuidador) |
 | DELETE | `/api/lotes/:id`   | eliminar lote (solo dueño) |
+| POST | `/api/lotes/:id/mover` | mover el lote a un potrero de su finca (`potreroId`, o `null` para sacarlo); el potrero que recibe queda ocupado y el que se vacía pasa a descanso |
+| GET  | `/api/mapa?fincaId=` | mapa vivo: potreros de la finca + lotes que siguen en finca (cabezas, peso actual, potrero, animales individuales sin vender) |
 | POST | `/api/lotes/extract` | OCR: extraer lotes de una foto de planilla (no guarda) |
 | POST | `/api/lotes/bulk`    | guardar varios lotes de una vez |
 | POST | `/api/animales`      | crear animal individual en un lote |
@@ -172,20 +183,22 @@ cd backend && npm run build    # dist/
 ## Modelo de datos
 
 - **User** — login con número de documento de identidad. Puede ser dueño y/o
-  cuidador de varias fincas.
+  cuidador de varias fincas. Puede tener un chat de Telegram vinculado
+  (`telegramChatId`) para registrar por el agente.
 - **Finca** — unidad de propiedad y pastoreo. Tiene un **dueño** y, opcional, un
   **cuidador**. Capacidad fija (ancho del mapa: 16/32/64 columnas) y
   `propiedades` libres (clave-valor: ubicación, municipio, vereda, etc.). Todo lo
   que vive en la finca (potreros y lotes) hereda quién la posee y la cuida.
 - **Potrero** — zona de pastoreo dentro de una finca. Estado *Ocupado* / *En
-  descanso* (manual) con fecha, `metadatos` libres (área, tipo de pasto, aforo,
+  descanso* (manual, o automático al mover un lote) con fecha, `metadatos` libres (área, tipo de pasto, aforo,
   agua…) y posición/tamaño en el mapa visual (`gridX/Y/W/H`).
 - **Lote** — **compra** de un lote de ganado en feria/subasta (la unidad principal;
   nace al comprar, antes de cebarlo): fecha, n° feria, n° lote, sexo,
   cantidad, peso total/promedio, valor final ($/kg), valor total, deducción,
   referencia, valor a pagar (lo que se paga al comprar), notas. `cantidad` es
   siempre **lo comprado** y no cambia al vender: las cabezas que quedan en finca
-  salen de restarle las ventas.
+  salen de restarle las ventas. Opcionalmente apunta al **potrero** donde pasta hoy
+  (`potreroId`, con `potreroDesde`); sin historial de rotaciones todavía.
 - **Pesaje** — pesaje del lote completo en el tiempo (manejo **por grupo**): fecha,
   cabezas pesadas y peso total. La app calcula el promedio por cabeza y la
   **ganancia media diaria (GMD)** entre pesajes consecutivos; si la compra tiene
@@ -276,6 +289,33 @@ su cría (M/H).
 > Nota de alcance: el negocio actual es **ceba pura** (ver `docs/roadmap.md`). En
 > la compra de engorde solo entran `ML` y `MC`; los códigos `VP`/`HV`/`TO` y la
 > lógica de crías existen en el esquema pero no aplican a ceba.
+
+## Agente por Telegram
+
+El backend arranca un bot de Telegram (long polling, sin webhook) cuando
+`TELEGRAM_BOT_TOKEN` está definido. Cada chat privado se vincula a un usuario de la
+app y desde ahí un agente (Claude con tools) registra lo que le cuentan:
+
+- `/vincular <documento> <contraseña>` — vincula el chat (el bot borra ese mensaje).
+- `/nuevo` — olvida la conversación; `/desvincular` — suelta el chat.
+
+Las tools del agente (`backend/src/telegram/tools.ts`) **no tocan la base**: llaman
+a la misma API REST firmando un token del usuario vinculado, así heredan
+validaciones y permisos (p. ej. solo el dueño registra ventas). Cubren: listar
+fincas y lotes, ver una finca (potreros + ganado) y un lote, crear lote, registrar
+pesaje, gasto, **flete compartido** entre varios lotes (reparto por cabeza),
+marcar gasto pagado, venta, mover lote de potrero, crear potrero, registrar
+animal, anotar y borrar registros (pide confirmación antes de vender o borrar).
+La conversación vive en memoria por chat (se pierde al reiniciar el backend).
+
+## Mapa vivo (`/mapa`)
+
+La página `/mapa/:fincaId` muestra cada potrero como un campo con su ganado
+caminando (🐂 machos, 🐄 hembras; las crías más pequeñas; punto naranja = animal
+registrado individualmente). Los lotes sin potrero aparecen en "Sin potrero".
+Tocar un animal abre su ficha: peso, último pesaje, kilos ganados, días desde la
+compra y en el potrero. Se refresca sola cada 20 s para mostrar lo que el agente
+va registrando.
 
 ## Importar planilla de feria por foto (OCR)
 
