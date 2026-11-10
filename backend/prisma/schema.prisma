@@ -61,6 +61,8 @@ model User {
   documento    String   @unique
   nombre       String
   passwordHash String
+  // Chat de Telegram vinculado (con /vincular en el bot): el agente actúa como este usuario.
+  telegramChatId String? @unique
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -105,6 +107,7 @@ model Potrero {
   gridY        Int?
   gridW        Int       @default(1)
   gridH        Int       @default(1)
+  lotes        Lote[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -115,6 +118,11 @@ model Lote {
   id           String   @id @default(cuid())
   fincaId      String
   finca        Finca    @relation(fields: [fincaId], references: [id], onDelete: Cascade)
+  // Potrero donde está pastando hoy el lote (null = sin asignar). potreroDesde marca
+  // cuándo entró, para contar días de ocupación.
+  potreroId    String?
+  potrero      Potrero? @relation(fields: [potreroId], references: [id], onDelete: SetNull)
+  potreroDesde DateTime?
   fecha        DateTime
   numeroFeria  String?
   loteNumero   String?
@@ -141,6 +149,7 @@ model Lote {
   ventas      Venta[]
 
   @@index([fincaId, fecha])
+  @@index([potreroId])
 }
 
 // Pesaje del lote completo (manejo por grupo): una fila = fecha + cantidad de

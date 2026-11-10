@@ -185,6 +185,52 @@ router.put('/:id', async (req, res) => {
   res.json({ lote });
 });
 
+// Mover el lote a otro potrero de su finca (o sacarlo: potreroId null). Es trabajo
+// del día a día, así que lo hacen dueño o cuidador. El potrero que recibe queda
+// ocupado; el que se vacía pasa a descanso si ya no le queda ningún lote.
+router.post('/:id/mover', async (req, res) => {
+  const parsed = z.object({ potreroId: z.string().min(1).nullable() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const lote = await prisma.lote.findFirst({
+    where: { id: req.params.id, ...lotesVisiblesWhere(req.user!.userId) },
+    select: { id: true, fincaId: true, potreroId: true },
+  });
+  if (!lote) return res.status(404).json({ error: 'Lote no encontrado' });
+
+  const destinoId = parsed.data.potreroId;
+  if (destinoId === lote.potreroId) return res.json({ lote });
+  if (destinoId) {
+    const destino = await prisma.potrero.findFirst({ where: { id: destinoId, fincaId: lote.fincaId } });
+    if (!destino) return res.status(404).json({ error: 'Ese potrero no es de la finca del lote' });
+  }
+
+  const now = new Date();
+  const actualizado = await prisma.$transaction(async (tx) => {
+    const l = await tx.lote.update({
+      where: { id: lote.id },
+      data: { potreroId: destinoId, potreroDesde: destinoId ? now : null },
+    });
+    if (destinoId) {
+      await tx.potrero.updateMany({
+        where: { id: destinoId, ocupado: false },
+        data: { ocupado: true, ocupadoDesde: now, vacioDesde: null },
+      });
+    }
+    if (lote.potreroId) {
+      const quedan = await tx.lote.count({ where: { potreroId: lote.potreroId } });
+      if (quedan === 0) {
+        await tx.potrero.update({
+          where: { id: lote.potreroId },
+          data: { ocupado: false, vacioDesde: now, ocupadoDesde: null },
+        });
+      }
+    }
+    return l;
+  });
+  res.json({ lote: actualizado });
+});
+
 router.delete('/:id', async (req, res) => {
   const finca = await rolesEnFincaDeLote(req.user!.userId, req.params.id);
   if (!finca) return res.status(404).json({ error: 'Lote no encontrado' });

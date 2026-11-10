@@ -15,6 +15,8 @@ import anotacionesRouter from './routes/anotaciones.js';
 import potrerosRouter from './routes/potreros.js';
 import fincasRouter from './routes/fincas.js';
 import bulkRouter from './routes/bulk.js';
+import mapaRouter from './routes/mapa.js';
+import { iniciarBotTelegram } from './telegram/bot.js';
 
 const app = express();
 
@@ -37,6 +39,7 @@ app.use('/api/anotaciones', anotacionesRouter);
 app.use('/api/potreros', potrerosRouter);
 app.use('/api/fincas', fincasRouter);
 app.use('/api/bulk', bulkRouter);
+app.use('/api/mapa', mapaRouter);
 
 // Manejo genérico de errores
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -46,4 +49,5 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 app.listen(env.PORT, () => {
   console.log(`miganado api → http://localhost:${env.PORT}`);
+  iniciarBotTelegram();
 });

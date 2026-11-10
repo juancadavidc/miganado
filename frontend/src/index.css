@@ -1325,3 +1325,101 @@ button.lote-card { width: 100%; text-align: left; font: inherit; cursor: pointer
 @media (min-width: 641px) {
   .show-mobile { display: none; }
 }
+
+/* ---------- Mapa vivo: potreros con el ganado caminando ---------- */
+.campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-3);
+}
+.campo {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 35%, transparent);
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.18) 0 2px, transparent 3px) 0 0 / 38px 38px,
+    radial-gradient(circle at 70% 60%, rgba(30, 70, 25, 0.12) 0 2px, transparent 3px) 0 0 / 46px 46px,
+    linear-gradient(160deg, #9cc77f, #7fb062);
+}
+.campo.is-descanso {
+  background:
+    radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.25) 0 2px, transparent 3px) 0 0 / 40px 40px,
+    linear-gradient(160deg, #c9dfae, #b5d293);
+}
+.campo.is-corral {
+  border-color: var(--color-border-strong);
+  background: repeating-linear-gradient(45deg, #e8dcc4 0 14px, #e2d4b8 14px 28px);
+}
+.campo-head {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 0.4rem 0.6rem;
+  font-size: var(--text-sm);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+.campo-head span { color: var(--color-text-muted); font-size: var(--text-xs); }
+.campo-vacio {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: color-mix(in srgb, var(--color-primary) 80%, black);
+  font-size: var(--text-sm);
+  opacity: 0.8;
+}
+.campo-extra {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.4rem;
+  z-index: 2;
+  font-size: var(--text-xs);
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+.vaca {
+  position: absolute;
+  z-index: 1;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  translate: -50% -50%;
+  transition-property: left, top;
+  transition-timing-function: linear;
+  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.25));
+}
+.vaca:hover, .vaca:focus-visible { z-index: 3; scale: 1.25; outline: none; background: none; box-shadow: none; }
+.vaca.is-cria { font-size: 19px; }
+.vaca.is-individual::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 1.5px solid #fff;
+}
+.vaca-cuerpo { display: inline-block; }
+.vaca.is-caminando .vaca-cuerpo { animation: vaca-paso 0.45s ease-in-out infinite alternate; }
+@keyframes vaca-paso { to { translate: 0 -3px; } }
+@media (prefers-reduced-motion: reduce) {
+  .vaca.is-caminando .vaca-cuerpo { animation: none; }
+}
+.ficha-datos { display: grid; gap: var(--space-2); margin-bottom: var(--space-4); }
+.ficha-datos > div { display: flex; justify-content: space-between; gap: var(--space-3); font-size: var(--text-sm); }
+.ficha-datos dt { color: var(--color-text-muted); }
+.ficha-datos dd { margin: 0; font-weight: 500; text-align: right; }
