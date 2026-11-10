@@ -159,10 +159,6 @@ El script borra los datos previos del usuario demo antes de recrearlos, así que
 se puede ejecutar tantas veces como quieras — los datos quedan en un estado
 conocido.
 
-> Para el entorno de la app desplegada/local hay además un usuario de prueba
-> determinístico vía `scripts/seed-usuario-prueba.sh` (documento `1234`,
-> contraseña `prueba1234`). Ver `CLAUDE.md`.
-
 ### 4. Frontend
 
 ```bash
