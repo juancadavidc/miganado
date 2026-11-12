@@ -191,6 +191,16 @@ model Animal {
   madreId    String?
   madre      Animal?  @relation("MadreCria", fields: [madreId], references: [id], onDelete: SetNull)
   crias      Animal[] @relation("MadreCria")
+  // Cría al pie: no fue una cabeza comprada (su venta no descuenta cabezas). Puede
+  // ir pegada a una madre registrada (madreId) o solo al lote, si las vacas no están
+  // registradas una por una. `nacimiento` es la fecha en que nació, o en que llegó
+  // si vino con la vaca (vinoConMadre). Al destetarse deja de estar al pie y queda
+  // como animal de levante del lote; `muerteFecha` la saca de la finca.
+  esCria       Boolean   @default(false)
+  nacimiento   DateTime?
+  vinoConMadre Boolean   @default(false)
+  destetadoAt  DateTime?
+  muerteFecha  DateTime?
   notas      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

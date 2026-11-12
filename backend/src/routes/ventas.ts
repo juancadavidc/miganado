@@ -51,13 +51,14 @@ router.post('/', async (req, res) => {
   if (d.animalId) {
     const animal = await prisma.animal.findUnique({
       where: { id: d.animalId },
-      select: { loteId: true, madreId: true, venta: { select: { id: true } } },
+      select: { loteId: true, esCria: true, muerteFecha: true, venta: { select: { id: true } } },
     });
     if (!animal || animal.loteId !== d.loteId) {
       return res.status(404).json({ error: 'Animal no encontrado en este lote' });
     }
     if (animal.venta) return res.status(409).json({ error: 'Ese animal ya está vendido' });
-    esCria = animal.madreId !== null;
+    if (animal.muerteFecha) return res.status(409).json({ error: 'Ese animal está registrado como muerto' });
+    esCria = animal.esCria;
     cantidad = esCria ? 0 : 1;
   }
 

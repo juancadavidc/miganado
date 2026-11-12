@@ -29,8 +29,11 @@ router.get('/', async (req, res) => {
         ventas: { select: { cantidad: true } },
         pesajes: { orderBy: { fecha: 'desc' }, take: 1 },
         animales: {
-          where: { venta: null },
-          select: { id: true, identificador: true, sexo: true, peso: true, notas: true, madreId: true },
+          where: { venta: null, muerteFecha: null },
+          select: {
+            id: true, identificador: true, sexo: true, peso: true, notas: true, madreId: true,
+            esCria: true, nacimiento: true, destetadoAt: true,
+          },
         },
       },
     }),

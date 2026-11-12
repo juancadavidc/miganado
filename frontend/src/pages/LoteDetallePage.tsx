@@ -707,7 +707,7 @@ function VentaForm({
         <div className="field">
           <label htmlFor="venta-cantidad">Cabezas</label>
           {animal ? (
-            <input id="venta-cantidad" type="number" value={animal.madreId ? 0 : 1} disabled />
+            <input id="venta-cantidad" type="number" value={animal.esCria ? 0 : 1} disabled />
           ) : (
             <input
               id="venta-cantidad"
@@ -721,7 +721,7 @@ function VentaForm({
             />
           )}
           <div className="helper">
-            {animal?.madreId
+            {animal?.esCria
               ? 'La cría vino al pie de la madre: no descuenta cabezas del lote'
               : animal ? 'La venta de un animal individual es una cabeza' : `Disponibles: ${maxCabezas}`}
           </div>
@@ -1124,11 +1124,17 @@ function AnimalRow({
               ↳ {animal.sexo === 'HL' ? 'Hija' : 'Hijo'} de {madre?.identificador ?? 'su madre'}
             </div>
           )}
+          {animal.esCria && !animal.madreId && <div className="kpi-sub">↳ Cría del lote</div>}
+          {animal.esCria && animal.nacimiento && (
+            <div className="kpi-sub">{animal.vinoConMadre ? 'Llegó' : 'Nació'} el {fmtDate(animal.nacimiento)}</div>
+          )}
+          {animal.destetadoAt && <div className="kpi-sub">Destetada el {fmtDate(animal.destetadoAt)}</div>}
+          {animal.muerteFecha && <div className="kpi-sub" style={{ color: 'var(--color-danger)' }}>Murió el {fmtDate(animal.muerteFecha)}</div>}
           {crias.map((c) => {
             const vc = ventas.find((v) => v.animalId === c.id);
             return (
               <div key={c.id} className="kpi-sub">
-                Cría {c.sexo === 'HL' ? 'hembra' : 'macho'}: {vc ? `vendida ${fmtMoney(vc.valorRecibido)}` : 'en finca'}
+                Cría {c.sexo === 'HL' ? 'hembra' : 'macho'}: {vc ? `vendida ${fmtMoney(vc.valorRecibido)}` : c.muerteFecha ? 'murió' : c.destetadoAt ? 'destetada' : 'al pie'}
               </div>
             );
           })}
@@ -1208,7 +1214,7 @@ function AnimalRow({
               anotaciones={anotaciones}
               onChange={onChange}
             />
-            {esDueno && !venta && (disponibles > 0 || animal.madreId) && (
+            {esDueno && !venta && !animal.muerteFecha && (disponibles > 0 || animal.esCria) && (
               <button
                 type="button"
                 className={vendiendo ? 'btn-ghost btn-sm' : 'btn-secondary btn-sm'}

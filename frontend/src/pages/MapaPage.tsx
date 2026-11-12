@@ -17,6 +17,9 @@ type AnimalMapa = {
   peso: string | null;
   notas: string | null;
   madreId: string | null;
+  esCria: boolean;
+  nacimiento: string | null;
+  destetadoAt: string | null;
 };
 
 type LoteMapa = {
@@ -49,13 +52,15 @@ const REFRESCO_MS = 20_000;
 const HEMBRAS: Sexo[] = ['VP', 'HV', 'HL'];
 
 function cabezasDe(lote: LoteMapa): Cabeza[] {
-  const individuales = lote.animales.filter((a) => !a.madreId);
-  const crias = lote.animales.filter((a) => a.madreId);
+  // Las cabezas compradas se dibujan con sus animales registrados; las crías van
+  // aparte (pequeñas mientras están al pie, de tamaño normal ya destetadas).
+  const individuales = lote.animales.filter((a) => !a.esCria);
+  const crias = lote.animales.filter((a) => a.esCria);
   const out: Cabeza[] = [];
   for (let i = 0; i < lote.cabezas; i++) {
     out.push({ key: `${lote.id}-${i}`, lote, animal: individuales[i] ?? null, cria: false });
   }
-  for (const c of crias) out.push({ key: c.id, lote, animal: c, cria: true });
+  for (const c of crias) out.push({ key: c.id, lote, animal: c, cria: !c.destetadoAt });
   return out;
 }
 
@@ -146,13 +151,15 @@ function Campo({
 function Ficha({ cabeza, potrero, onClose }: { cabeza: Cabeza; potrero: Potrero | null; onClose: () => void }) {
   const { lote, animal } = cabeza;
   const ganado = lote.pesoCompra != null && lote.pesoActual != null ? lote.pesoActual - lote.pesoCompra : null;
-  const peso = animal?.peso != null ? Number(animal.peso) : lote.pesoActual;
+  const esCria = !!animal?.esCria;
+  // El peso del lote es de las cabezas compradas: a una cría solo se le muestra el suyo.
+  const peso = animal?.peso != null ? Number(animal.peso) : esCria ? null : lote.pesoActual;
   return (
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal ficha" role="dialog" aria-modal="true" aria-label="Ficha del animal">
         <div className="row-between">
           <h2 style={{ margin: 0 }}>
-            {cabeza.cria ? 'Cría' : animal?.identificador ?? 'Animal'}{' '}
+            {animal?.identificador ?? (esCria ? 'Cría' : 'Animal')}{' '}
             <span className="muted" style={{ fontWeight: 400 }}>
               · {lote.loteNumero ? `Lote ${lote.loteNumero}` : 'Lote sin número'}
             </span>
@@ -166,11 +173,20 @@ function Ficha({ cabeza, potrero, onClose }: { cabeza: Cabeza; potrero: Potrero 
         </div>
         <dl className="ficha-datos">
           <div><dt>Peso{animal?.peso != null ? '' : ' promedio'}</dt><dd>{peso != null ? `${fmtNum(peso, 0)} kg` : '—'}</dd></div>
-          {!animal?.peso && ganado != null && (
+          {!animal?.peso && !esCria && ganado != null && (
             <div><dt>Ganado desde la compra</dt><dd>{ganado >= 0 ? '+' : ''}{fmtNum(ganado, 0)} kg</dd></div>
           )}
-          <div><dt>Último pesaje</dt><dd>{lote.ultimoPesaje ? fmtDate(lote.ultimoPesaje) : 'sin pesajes'}</dd></div>
-          <div><dt>Comprado</dt><dd>{fmtDate(lote.fecha)} · hace {fmtDias(diasDesde(lote.fecha))}</dd></div>
+          {esCria ? (
+            <>
+              <div><dt>Edad</dt><dd>{animal?.nacimiento ? `${fmtDias(diasDesde(animal.nacimiento))} · ${fmtDate(animal.nacimiento)}` : '—'}</dd></div>
+              <div><dt>Estado</dt><dd>{animal?.destetadoAt ? `destetada el ${fmtDate(animal.destetadoAt)}` : 'al pie de la madre'}</dd></div>
+            </>
+          ) : (
+            <>
+              <div><dt>Último pesaje</dt><dd>{lote.ultimoPesaje ? fmtDate(lote.ultimoPesaje) : 'sin pesajes'}</dd></div>
+              <div><dt>Comprado</dt><dd>{fmtDate(lote.fecha)} · hace {fmtDias(diasDesde(lote.fecha))}</dd></div>
+            </>
+          )}
           <div><dt>Potrero</dt><dd>{potrero ? `${potrero.nombre} · ${fmtDias(diasDesde(lote.potreroDesde))}` : 'sin asignar'}</dd></div>
           <div><dt>Lote</dt><dd>{lote.cabezas} de {lote.cantidad} cabezas en finca</dd></div>
         </dl>
