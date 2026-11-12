@@ -14,8 +14,9 @@ export const env = {
   CORS_ORIGIN: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? '',
   ANTHROPIC_MODEL: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6',
-  // Bot de Telegram + agente (opcional: sin token el bot no arranca).
-  TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN ?? '',
+  // Llave para cifrar el token del bot de Telegram de cada cuenta (opcional: sin
+  // ella no se pueden configurar bots).
+  TELEGRAM_TOKEN_KEY: process.env.TELEGRAM_TOKEN_KEY ?? '',
   AGENTE_MODEL: process.env.AGENTE_MODEL ?? 'claude-opus-5-5',
   // Link a la app web que el agente comparte (p. ej. el mapa de la finca).
   APP_URL: process.env.APP_URL ?? 'http://localhost:5173',

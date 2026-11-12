@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, ChevronDown, Menu, X, Beef, LandPlot, ArrowLeftRight, Layers, Map } from 'lucide-react';
+import { LogOut, ChevronDown, Menu, X, Beef, LandPlot, ArrowLeftRight, Layers, Map, Send } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { api } from '../api/client';
 import { BrandMark } from './BrandMark';
@@ -137,6 +137,10 @@ export function Navbar() {
                   <div className="muted" style={{ fontSize: '0.75rem' }}>Doc. {user.documento}</div>
                 </div>
                 <div className="divider" style={{ margin: '0.25rem 0' }} />
+                <Link to="/telegram" className="menu-item" role="menuitem" onClick={() => setMenuOpen(false)}>
+                  <Send size={16} aria-hidden="true" />
+                  Telegram
+                </Link>
                 <button type="button" className="menu-item danger" role="menuitem" onClick={onLogout}>
                   <LogOut size={16} aria-hidden="true" />
                   Salir
@@ -197,6 +201,10 @@ export function Navbar() {
                   <div className="muted" style={{ fontSize: '0.75rem' }}>Doc. {user.documento}</div>
                 </div>
               </div>
+              <Link to="/telegram" className="menu-item" onClick={() => setDrawerOpen(false)}>
+                <Send size={16} aria-hidden="true" />
+                Telegram
+              </Link>
               <button type="button" className="menu-item danger" onClick={onLogout}>
                 <LogOut size={16} aria-hidden="true" />
                 Salir

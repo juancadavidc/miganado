@@ -12,6 +12,7 @@ import { FincasPage } from './pages/FincasPage';
 import { FincaDetallePage } from './pages/FincaDetallePage';
 import { BulkPage } from './pages/BulkPage';
 import { MapaPage } from './pages/MapaPage';
+import { TelegramPage } from './pages/TelegramPage';
 
 function Protected({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -103,6 +104,14 @@ export default function App() {
             }
           />
         ))}
+        <Route
+          path="/telegram"
+          element={
+            <Protected>
+              <TelegramPage />
+            </Protected>
+          }
+        />
         <Route path="/potreros" element={<Navigate to="/fincas" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

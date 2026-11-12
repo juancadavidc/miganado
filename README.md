@@ -82,7 +82,7 @@ Variables de entorno (ver `backend/.env.example`):
 | `JWT_SECRET`, `JWT_EXPIRES_IN` | firma/expiración del token |
 | `CORS_ORIGIN` | origen permitido del frontend |
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | OCR de planillas con Claude Vision |
-| `TELEGRAM_BOT_TOKEN` | token del bot de Telegram (de @BotFather); vacío = bot apagado |
+| `TELEGRAM_TOKEN_KEY` | llave para cifrar el token del bot de Telegram de cada cuenta; vacía = Telegram deshabilitado |
 | `AGENTE_MODEL` | modelo del agente del chat (default `claude-opus-5-5`; usa `ANTHROPIC_API_KEY`) |
 | `APP_URL` | URL pública de la app web, para los links al mapa que comparte el agente |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL` | almacenamiento de fotos en Cloudflare R2 |
@@ -92,6 +92,10 @@ Variables de entorno (ver `backend/.env.example`):
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | GET  | `/api/health`        | health check |
+| GET  | `/api/telegram`      | estado del bot de Telegram de la cuenta (configurado, `@usuario`, chat vinculado) |
+| PUT  | `/api/telegram`      | conectar el bot de la cuenta (`token` de @BotFather; se valida con Telegram y se guarda cifrado) |
+| DELETE | `/api/telegram`    | quitar el bot de la cuenta |
+| POST | `/api/telegram/codigo` | link de un solo uso (15 min) `t.me/<bot>?start=<código>` para vincular el chat |
 | POST | `/api/auth/register` | registrar (documento, nombre, password) |
 | POST | `/api/auth/login`    | login con documento |
 | GET  | `/api/auth/me`       | usuario actual |
@@ -179,8 +183,10 @@ cd backend && npm run build    # dist/
 ## Modelo de datos
 
 - **User** — login con número de documento de identidad. Puede ser dueño y/o
-  cuidador de varias fincas. Puede tener un chat de Telegram vinculado
-  (`telegramChatId`) para registrar por el agente.
+  cuidador de varias fincas. Puede conectar **su propio bot de Telegram**
+  (`telegramBotToken` cifrado, `telegramBotId`, `telegramBotUsername`) y el chat
+  vinculado a ese bot (`telegramChatId`, vía código de un solo uso
+  `telegramCodigo`/`telegramCodigoExpira`).
 - **Finca** — unidad de propiedad y pastoreo. Tiene un **dueño** y, opcional, un
   **cuidador**. Capacidad fija (ancho del mapa: 16/32/64 columnas) y
   `propiedades` libres (clave-valor: ubicación, municipio, vereda, etc.). Todo lo
@@ -288,12 +294,17 @@ su cría (M/H).
 
 ## Agente por Telegram
 
-El backend arranca un bot de Telegram (long polling, sin webhook) cuando
-`TELEGRAM_BOT_TOKEN` está definido. Cada chat privado se vincula a un usuario de la
-app y desde ahí un agente (Claude con tools) registra lo que le cuentan:
+**Cada cuenta conecta su propio bot** (dueño o cuidador, cada uno el suyo). En la
+app, menú de usuario → **Telegram**: se crea el bot en @BotFather, se pega el
+token (la app lo valida con Telegram y lo guarda cifrado con `TELEGRAM_TOKEN_KEY`)
+y se toca **Vincular mi Telegram**, que abre `t.me/<bot>?start=<código>`; ese chat
+queda como el único al que el bot le responde. Desde ahí un agente (Claude con
+tools) registra lo que le cuentan, actuando como esa cuenta. El backend escucha
+todos los bots por long polling (sin webhook) y los prende o apaga al guardar o
+quitar el token, sin redeploy. La llave de Anthropic es una sola para todas las
+cuentas.
 
-- `/vincular <documento> <contraseña>` — vincula el chat (el bot borra ese mensaje).
-- `/nuevo` — olvida la conversación; `/desvincular` — suelta el chat.
+En el chat: `/nuevo` olvida la conversación y `/desvincular` suelta el chat.
 
 Las tools del agente (`backend/src/telegram/tools.ts`) **no tocan la base**: llaman
 a la misma API REST firmando un token del usuario vinculado, así heredan
