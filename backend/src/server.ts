@@ -16,6 +16,7 @@ import potrerosRouter from './routes/potreros.js';
 import fincasRouter from './routes/fincas.js';
 import bulkRouter from './routes/bulk.js';
 import mapaRouter from './routes/mapa.js';
+import criasRouter from './routes/crias.js';
 import { iniciarBotsTelegram } from './telegram/bot.js';
 import telegramRouter from './routes/telegram.js';
 
@@ -41,6 +42,7 @@ app.use('/api/potreros', potrerosRouter);
 app.use('/api/fincas', fincasRouter);
 app.use('/api/bulk', bulkRouter);
 app.use('/api/mapa', mapaRouter);
+app.use('/api/crias', criasRouter);
 app.use('/api/telegram', telegramRouter);
 
 // Manejo genérico de errores

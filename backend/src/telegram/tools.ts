@@ -130,7 +130,11 @@ const tools: Tool[] = [
         pesajes: l.pesajes.map((p: any) => ({ id: p.id, fecha: dia(p.fecha), cantidad: p.cantidad, pesoTotal: n(p.pesoTotal) })),
         gastos: l.gastos.map((g: any) => ({ id: g.id, fecha: dia(g.fecha), tipo: g.tipo, descripcion: g.descripcion, monto: n(g.monto), pagado: g.pagado })),
         ventas: l.ventas.map((v: any) => ({ id: v.id, fecha: dia(v.fecha), cantidad: v.cantidad, pesoTotal: n(v.pesoTotal), valorRecibido: n(v.valorRecibido), comprador: v.comprador, animalId: v.animalId })),
-        animales: l.animales.map((a: any) => ({ id: a.id, identificador: a.identificador, sexo: a.sexo, peso: n(a.peso), madreId: a.madreId, notas: a.notas })),
+        animales: l.animales.map((a: any) => ({
+          id: a.id, identificador: a.identificador, sexo: a.sexo, peso: n(a.peso), notas: a.notas,
+          ...(a.esCria && { esCria: true, madreId: a.madreId, nacimiento: dia(a.nacimiento), destetada: dia(a.destetadoAt) }),
+          ...(a.muerteFecha && { murio: dia(a.muerteFecha) }),
+        })),
         anotaciones: l.anotaciones.map((a: any) => ({ id: a.id, fecha: dia(a.createdAt), texto: a.texto })),
         notas: l.notas,
       };
@@ -298,6 +302,125 @@ const tools: Tool[] = [
       },
     },
     run: async (u, i) => api(u, 'POST', '/api/animales', i),
+  },
+  {
+    def: {
+      name: 'actualizar_animal',
+      description: 'Corrige un animal individual: sexo (p. ej. pasar una VP a HV cuando el dueño lo confirme), peso, marca o notas.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          animalId: { type: 'string' },
+          sexo: { type: 'string', enum: SEXOS },
+          peso: { type: 'number' },
+          identificador: { type: 'string' },
+          notas: { type: 'string' },
+        },
+        required: ['animalId'],
+      },
+    },
+    run: async (u, { animalId, ...i }) => api(u, 'PUT', `/api/animales/${encodeURIComponent(animalId)}`, i),
+  },
+  {
+    def: {
+      name: 'registrar_cria',
+      description:
+        'Registra una cría al pie: pegada a su madre (madreId, una VP/HV registrada en el lote) o solo al lote si las vacas no están registradas una por una. Una vaca puede tener mellizos (dos crías). No cambia a la madre.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          loteId: { type: 'string' },
+          madreId: { type: 'string' },
+          sexo: { type: 'string', enum: ['M', 'H'] },
+          nacimiento: { ...FECHA, description: 'Fecha en que nació, o en que llegó si vino con la vaca' },
+          vinoConMadre: { type: 'boolean', description: 'true si vino con la vaca en la compra' },
+          peso: { type: 'number' },
+          identificador: { type: 'string', description: 'Marca o nombre, si tiene' },
+          notas: { type: 'string' },
+        },
+        required: ['loteId', 'sexo'],
+      },
+    },
+    run: async (u, i) => api(u, 'POST', '/api/crias', i),
+  },
+  {
+    def: {
+      name: 'listar_crias',
+      description:
+        'Crías de una finca o de un lote con su madre, lote, nacimiento y estado (AL_PIE, DESTETADA, VENDIDA, MUERTA). Úsala para saber qué crías hay antes de venderlas o actualizarlas.',
+      input_schema: {
+        type: 'object',
+        properties: { fincaId: { type: 'string' }, loteId: { type: 'string' } },
+      },
+    },
+    run: async (u, i) => {
+      const q = new URLSearchParams(Object.entries(i).filter(([, v]) => v) as [string, string][]);
+      const { crias } = (await api(u, 'GET', `/api/crias?${q}`)) as any;
+      return crias.map((c: any) => ({
+        id: c.id,
+        identificador: c.identificador,
+        sexo: c.sexo === 'HL' ? 'hembra' : 'macho',
+        estado: c.estado,
+        nacimiento: dia(c.nacimiento),
+        vinoConMadre: c.vinoConMadre,
+        peso: n(c.peso),
+        madre: c.madre ? { id: c.madre.id, identificador: c.madre.identificador, sexo: c.madre.sexo } : null,
+        loteId: c.lote.id,
+        loteNumero: c.lote.loteNumero,
+        ...(c.venta && { vendida: { fecha: dia(c.venta.fecha), recibido: n(c.venta.valorRecibido) } }),
+      }));
+    },
+  },
+  {
+    def: {
+      name: 'actualizar_cria',
+      description:
+        'Actualiza una cría: peso, marca, fecha de nacimiento, destete (destetadoAt: deja de estar al pie y queda de levante en el lote) o muerte (muerteFecha + nota de qué murió; deja nota también en la madre). Si la respuesta trae madresSinCria, pregunta al usuario si pasa esas vacas de VP a HV.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          criaId: { type: 'string' },
+          peso: { type: 'number' },
+          identificador: { type: 'string' },
+          nacimiento: FECHA,
+          destetadoAt: FECHA,
+          muerteFecha: FECHA,
+          nota: { type: 'string' },
+        },
+        required: ['criaId'],
+      },
+    },
+    run: async (u, { criaId, ...i }) => api(u, 'PATCH', `/api/crias/${encodeURIComponent(criaId)}`, i),
+  },
+  {
+    def: {
+      name: 'registrar_venta_crias',
+      description:
+        'Vende varias crías en una salida (solo el dueño) y reparte la plata entre sus lotes: una venta por cría. Formas de dar el valor: (a) valor de cada cría en crias[].valor; (b) valorTotal sin precios exactos → se reparte parejo entre las crías sin valor; (c) al kilo con precioKilo + kilos de cada cría o pesoTotal (lo que falte se reparte parejo). La deducción se reparte según la plata de cada cría. Antes de llamarla muestra el reparto al usuario y espera su "sí". Si la respuesta trae madresSinCria, pregunta si pasa esas vacas de VP a HV.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          fecha: FECHA,
+          crias: {
+            type: 'array',
+            minItems: 1,
+            items: {
+              type: 'object',
+              properties: { criaId: { type: 'string' }, valor: { type: 'number' }, kilos: { type: 'number' } },
+              required: ['criaId'],
+            },
+          },
+          valorTotal: { type: 'number' },
+          precioKilo: { type: 'number' },
+          pesoTotal: { type: 'number' },
+          deduccion: { type: 'number', description: 'Comisión, báscula, etc. del total' },
+          comprador: { type: 'string' },
+          notas: { type: 'string' },
+        },
+        required: ['fecha', 'crias'],
+      },
+    },
+    run: async (u, i) => api(u, 'POST', '/api/crias/venta', i),
   },
   {
     def: {

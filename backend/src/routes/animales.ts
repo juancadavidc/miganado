@@ -106,6 +106,8 @@ router.post('/:id/separar-cria', async (req, res) => {
       data: {
         loteId: madre.loteId,
         madreId: madre.id,
+        esCria: true,
+        vinoConMadre: true,
         identificador: parsed.data.identificador || (madre.identificador ? `Cría de ${madre.identificador}` : null),
         sexo: criaSexo === 'H' ? 'HL' : 'ML',
         peso: parsed.data.pesoCria ?? null,

@@ -166,6 +166,11 @@ export type Animal = {
   peso: string | null;
   criaSexo: CriaSexo | null;
   madreId: string | null; // cría separada de una VP
+  esCria: boolean; // cría al pie (no fue una cabeza comprada)
+  nacimiento: string | null;
+  vinoConMadre: boolean;
+  destetadoAt: string | null;
+  muerteFecha: string | null;
   notas: string | null;
   fotos?: Foto[];
   anotaciones?: Anotacion[];

@@ -124,6 +124,10 @@ Variables de entorno (ver `backend/.env.example`):
 | PUT  | `/api/animales/:id`  | editar animal |
 | DELETE | `/api/animales/:id`| eliminar animal |
 | POST | `/api/animales/:id/separar-cria` | separar la cría de una VP: pide el peso de la madre (pasa a HV) y crea la cría (HL/ML) ligada a ella |
+| GET  | `/api/crias?fincaId=&loteId=` | crías al pie con madre, lote, nacimiento y estado (`AL_PIE`, `DESTETADA`, `VENDIDA`, `MUERTA`) |
+| POST | `/api/crias`         | registrar una cría al pie de una vaca (`madreId`) o del lote: sexo, nacimiento/llegada, si vino con la vaca, peso opcional |
+| PATCH | `/api/crias/:id`    | actualizar cría: peso, marca, destete (`destetadoAt`) o muerte (`muerteFecha` + nota, también anotada en la madre) |
+| POST | `/api/crias/venta`   | vender varias crías en una salida (solo dueño): una `Venta` por cría; precio por cría, total repartido parejo o al kilo; la deducción se reparte según la plata de cada cría. Devuelve el reparto por lote y las madres que quedaron sin cría al pie |
 | POST | `/api/prenez`        | registrar preñez de una vaca (VP) |
 | PUT  | `/api/prenez/:id`    | completar/editar evento (parto + crías, o aborto) |
 | DELETE | `/api/prenez/:id`  | eliminar evento de preñez |
@@ -235,6 +239,17 @@ cd backend && npm run build    # dist/
   para venderla sola con trazabilidad. Como la cría no fue una cabeza comprada, su
   venta queda con `cantidad = 0`: suma a los ingresos del lote pero no descuenta
   cabezas, y su plata entra en la utilidad cuando se venda la madre.
+- **Crías** — una cría al pie es un `Animal` con `esCria`: no fue una cabeza
+  comprada, así que su venta suma plata al lote sin descontarle cabezas. Va pegada
+  a su madre (`madreId`) o solo al lote cuando las vacas no están registradas una
+  por una; una vaca puede tener más de una (mellizos). Guarda `nacimiento` (o la
+  fecha de llegada si `vinoConMadre`), peso opcional y su estado: al pie, destetada
+  (`destetadoAt`: queda de levante en el lote), vendida (tiene `Venta`) o muerta
+  (`muerteFecha`; sale del mapa y deja una anotación en la madre). Cuando una vaca
+  se queda sin crías al pie, la app **no** la pasa sola de VP a HV: el agente le
+  pregunta al dueño (una vaca que vende o pierde la cría puede seguir siendo de
+  cría). La **venta de crías** reparte la plata entre los lotes de las crías: por
+  precio de cada una, el total parejo cuando no hubo precios exactos, o al kilo.
 - **Prenez** — evento reproductivo de una **vaca parida (VP)**: arranca cuando se
   confirma la preñez (fecha de diagnóstico) y se completa al parir (fecha de parto
   + cuántas crías macho/hembra) o al abortar. Una vaca acumula varios → es su
@@ -311,8 +326,10 @@ a la misma API REST firmando un token del usuario vinculado, así heredan
 validaciones y permisos (p. ej. solo el dueño registra ventas). Cubren: listar
 fincas y lotes, ver una finca (potreros + ganado) y un lote, crear lote, registrar
 pesaje, gasto, **flete compartido** entre varios lotes (reparto por cabeza),
-marcar gasto pagado, venta, mover lote de potrero, crear potrero, registrar
-animal, anotar y borrar registros (pide confirmación antes de vender o borrar).
+marcar gasto pagado, venta, mover lote de potrero, crear potrero, registrar y
+corregir animales, **crías** (registrar, listar, destete/muerte y **venta de
+varias crías** con reparto entre lotes), anotar y borrar registros (pide
+confirmación antes de vender o borrar).
 La conversación vive en memoria por chat (se pierde al reiniciar el backend).
 
 ## Mapa vivo (`/mapa`)

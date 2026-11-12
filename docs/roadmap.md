@@ -175,9 +175,21 @@ las alertas (rotación de potrero, vencimiento de vacuna, sugerencia de venta):
 - Guardar la conversación en base para que sobreviva reinicios del backend.
 - Usar el mismo bot para las alertas (rotación, vacunas) descritas arriba.
 
+## Crías — siguientes pasos
+
+Ya entregado: crías al pie (madre o lote), destete, muerte y venta de varias crías
+con reparto entre lotes (validado con el stakeholder). Para después:
+
+- Peso al nacer y curva de ganancia de las crías.
+- Alerta de vacas que pierden crías seguido (candidatas a descarte).
+- Separar el costo de la cría que vino con la vaca: hoy su venta entra completa
+  como ingreso del lote y puede inflar su utilidad.
+
 ## Lo que NO se construye (para este negocio)
 
-- **Reproducción** (montas, palpaciones, partos, destetes): no hay cría.
+- **Reproducción** (montas, palpaciones, control de partos): el negocio no hace cría
+  propia. Sí se llevan las **crías al pie** de las vacas paridas que se compran
+  (registro, destete, muerte y venta), porque son plata del lote.
 - **Animal individual con orejera como flujo principal**: el manejo es por grupo;
   lo individual queda solo para enfermos y bajas.
 - **Inseminación artificial** con registros de pajillas/toros donantes: es para
