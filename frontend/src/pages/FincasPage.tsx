@@ -115,6 +115,7 @@ export function FincasPage() {
               <div className="potrero-card-head">
                 <span className="potrero-icon" aria-hidden="true"><LandPlot size={18} /></span>
                 <span className="row" style={{ gap: 'var(--space-1)' }}>
+                  {f.miRol === 'LECTOR' && <span className="badge">Solo lectura</span>}
                   {meId && f.cuidador?.id === meId && f.dueno?.id !== meId && (
                     <span className="badge" style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }}>Cuido</span>
                   )}
@@ -152,7 +153,7 @@ export function FincasPage() {
                   Abrir mapa <ChevronRight size={14} aria-hidden="true" style={{ verticalAlign: '-2px' }} />
                 </span>
                 <div className="nav-spacer" />
-                <button
+                {f.miRol !== 'LECTOR' && <button
                   type="button"
                   className="btn-ghost btn-icon"
                   onClick={(e) => { e.stopPropagation(); setModal({ open: true, mode: 'editar', target: f }); }}
@@ -160,7 +161,7 @@ export function FincasPage() {
                   disabled={busyId === f.id}
                 >
                   <Pencil size={16} />
-                </button>
+                </button>}
                 {f.dueno?.id === meId && (
                   <button
                     type="button"

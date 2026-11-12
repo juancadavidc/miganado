@@ -5,6 +5,7 @@ import type { Prenez, PrenezEstado } from '../types';
 import { PRENEZ_ESTADO_LABELS } from '../types';
 import { fmtDate, toInputDate } from '../lib/format';
 import { useConfirm } from './ConfirmDialog';
+import { useSoloLectura } from '../lib/soloLectura';
 
 type Props = {
   animalId: string;
@@ -18,6 +19,7 @@ export function PrenezControl({ animalId, prenez, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const { ask, dialog } = useConfirm();
+  const soloLectura = useSoloLectura();
 
   const count = prenez.length;
   const abierta = prenez.find((p) => p.estado === 'PRENADA');
@@ -33,6 +35,8 @@ export function PrenezControl({ animalId, prenez, onChange }: Props) {
     await api(`/api/prenez/${p.id}`, { method: 'DELETE' });
     onChange();
   }
+
+  if (soloLectura && count === 0) return null;
 
   if (!open) {
     return (
@@ -54,12 +58,12 @@ export function PrenezControl({ animalId, prenez, onChange }: Props) {
         </button>
       </div>
 
-      {!showForm && (
+      {!showForm && !soloLectura && (
         <button type="button" className="btn-sm" onClick={() => setShowForm(true)} disabled={!!abierta}>
           <Plus size={14} aria-hidden="true" />Registrar preñez
         </button>
       )}
-      {abierta && !showForm && (
+      {abierta && !showForm && !soloLectura && (
         <p className="muted" style={{ fontSize: 'var(--text-xs)', marginTop: 'var(--space-1)' }}>
           Ya hay una preñez abierta. Complétala (parto o aborto) antes de registrar otra.
         </p>
@@ -173,6 +177,7 @@ function PrenezForm({ animalId, onDone }: { animalId: string; onDone: () => void
 
 function PrenezItem({ prenez, onChange, onDelete }: { prenez: Prenez; onChange: () => void; onDelete: () => void }) {
   const [completing, setCompleting] = useState(false);
+  const soloLectura = useSoloLectura();
 
   const crias = prenez.criasMacho + prenez.criasHembra;
 
@@ -195,7 +200,7 @@ function PrenezItem({ prenez, onChange, onDelete }: { prenez: Prenez; onChange: 
         {prenez.estado === 'PRENADA' && 'Esperando parto'}
         {prenez.notas && <span className="muted"> — {prenez.notas}</span>}
       </p>
-      <div className="anotacion-actions">
+      {!soloLectura && <div className="anotacion-actions">
         {prenez.estado === 'PRENADA' && !completing && (
           <button type="button" className="btn-sm" onClick={() => setCompleting(true)}>
             <Check size={12} />Completar
@@ -204,7 +209,7 @@ function PrenezItem({ prenez, onChange, onDelete }: { prenez: Prenez; onChange: 
         <button type="button" className="btn-danger btn-icon btn-sm" onClick={onDelete} aria-label="Eliminar evento">
           <Trash2 size={12} />
         </button>
-      </div>
+      </div>}
       {completing && (
         <CompletarPrenez prenez={prenez} onDone={() => { setCompleting(false); onChange(); }} onCancel={() => setCompleting(false)} />
       )}

@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
-import { fincasVisiblesWhere } from '../lib/fincaAccess.js';
+import { fincasVisiblesWhere, fincasLegiblesWhere } from '../lib/fincaAccess.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -69,7 +69,9 @@ router.get('/', async (req, res) => {
   const parsed = listQuerySchema.safeParse(req.query);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const finca = await fincaDelUsuario(parsed.data.fincaId, req.user!.userId);
+  const finca = await prisma.finca.findFirst({
+    where: { id: parsed.data.fincaId, ...fincasLegiblesWhere(req.user!.userId) },
+  });
   if (!finca) return res.status(404).json({ error: 'Finca no encontrada' });
 
   const potreros = await prisma.potrero.findMany({

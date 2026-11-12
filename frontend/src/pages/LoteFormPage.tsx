@@ -36,8 +36,9 @@ export function LoteFormPage() {
   useEffect(() => {
     api<{ fincas: Finca[] }>('/api/fincas')
       .then((d) => {
-        setFincas(d.fincas);
-        if (d.fincas[0]) setForm((f) => (f.fincaId ? f : { ...f, fincaId: d.fincas[0].id }));
+        const operables = d.fincas.filter((f) => f.miRol !== 'LECTOR');
+        setFincas(operables);
+        if (operables[0]) setForm((f) => (f.fincaId ? f : { ...f, fincaId: operables[0].id }));
       })
       .catch(() => { /* el form muestra el aviso de crear finca */ });
   }, []);

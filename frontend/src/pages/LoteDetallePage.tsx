@@ -14,6 +14,7 @@ import { precioPorKg, resumenVentas } from '../lib/ventas';
 import { SexoBadge } from '../components/SexoBadge';
 import { useConfirm } from '../components/ConfirmDialog';
 import { Anotaciones } from '../components/Anotaciones';
+import { SoloLecturaContext, useSoloLectura } from '../lib/soloLectura';
 import { PrenezControl } from '../components/Prenez';
 import { useAuth } from '../auth/AuthContext';
 
@@ -84,9 +85,11 @@ export function LoteDetalleVista({
   const invertido = Number(lote.valorAPagar) + gastosTotal;
   const meId = user?.id ?? '';
   const esDueno = lote.finca?.dueno?.id === meId;
+  const soloLectura = lote.finca?.miRol === 'LECTOR';
   const ventas = resumenVentas(lote, lote.ventas, lote.gastos);
 
   return (
+    <SoloLecturaContext.Provider value={soloLectura}>
     <div className="container">
       <header className="page-header">
         <div className="row" style={{ gap: 'var(--space-2)' }}>
@@ -165,6 +168,7 @@ export function LoteDetalleVista({
 
       {dialog}
     </div>
+    </SoloLecturaContext.Provider>
   );
 }
 
@@ -193,6 +197,7 @@ function SeccionPropiedad({ lote, meId }: { lote: LoteDetalle; meId: string }) {
   const finca = lote.finca;
   const cuidadorEsDueno = !!finca?.cuidador && finca.cuidador.id === finca.dueno?.id;
   const esCuidador = finca?.cuidador?.id === meId && finca?.dueno?.id !== meId;
+  const soloLectura = finca?.miRol === 'LECTOR';
 
   return (
     <section className="card" style={{ marginBottom: 'var(--space-4)' }}>
@@ -203,7 +208,7 @@ function SeccionPropiedad({ lote, meId }: { lote: LoteDetalle; meId: string }) {
         </h2>
         {finca && (
           <Link to={`/fincas/${finca.id}`} className="btn-secondary btn-sm">
-            Gestionar en la finca
+            {soloLectura ? 'Ver la finca' : 'Gestionar en la finca'}
           </Link>
         )}
       </div>
@@ -223,7 +228,9 @@ function SeccionPropiedad({ lote, meId }: { lote: LoteDetalle; meId: string }) {
       </div>
 
       <p className="muted" style={{ marginTop: 'var(--space-3)' }}>
-        {esCuidador
+        {soloLectura
+          ? 'Te compartieron esta finca en solo lectura: ves todo, pero no podés registrar ni editar.'
+          : esCuidador
           ? 'Cuidás esta finca. Podés registrar pesos, animales, gastos, fotos y anotaciones. Los valores comerciales y la asignación de roles los maneja el dueño.'
           : 'El dueño y el cuidador se asignan a nivel de finca y se heredan a todos sus lotes.'}
       </p>
@@ -268,6 +275,7 @@ function colorGanancia(kg: number | null): string | undefined {
 }
 
 function SeccionPesajes({ lote, onChange, ask }: { lote: LoteDetalle; onChange: () => void; ask: Asker }) {
+  const soloLectura = useSoloLectura();
   const resumen = calcularPesajes(lote, lote.pesajes);
   const hayPesajes = lote.pesajes.length > 0;
 
@@ -317,7 +325,7 @@ function SeccionPesajes({ lote, onChange, ask }: { lote: LoteDetalle; onChange: 
         </div>
       )}
 
-      <PesajeForm loteId={lote.id} defaultCantidad={lote.cantidad} onDone={onChange} />
+      {!soloLectura && <PesajeForm loteId={lote.id} defaultCantidad={lote.cantidad} onDone={onChange} />}
 
       <div className="callout row" style={{ gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
         <Info size={15} aria-hidden="true" style={{ flexShrink: 0 }} />
@@ -382,7 +390,7 @@ function SeccionPesajes({ lote, onChange, ask }: { lote: LoteDetalle; onChange: 
                   </td>
                   <td>{f.notas ?? <span className="muted">—</span>}</td>
                   <td>
-                    {!f.esCompra && f.id && (
+                    {!f.esCompra && f.id && !soloLectura && (
                       <button
                         type="button"
                         className="btn-danger btn-icon btn-sm"
@@ -819,6 +827,7 @@ function VentaForm({
 }
 
 function SeccionFotos({ lote, onChange, ask }: { lote: LoteDetalle; onChange: () => void; ask: Asker }) {
+  const soloLectura = useSoloLectura();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -862,17 +871,19 @@ function SeccionFotos({ lote, onChange, ask }: { lote: LoteDetalle; onChange: ()
           Fotos del lote
           <span className="muted tabnum">({lote.fotos.length})</span>
         </h2>
-        <label className="btn">
-          <Upload size={16} aria-hidden="true" />
-          {uploading ? 'Subiendo…' : 'Subir foto'}
-          <input
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            disabled={uploading}
-            onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
-          />
-        </label>
+        {!soloLectura && (
+          <label className="btn">
+            <Upload size={16} aria-hidden="true" />
+            {uploading ? 'Subiendo…' : 'Subir foto'}
+            <input
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              disabled={uploading}
+              onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
+            />
+          </label>
+        )}
       </div>
       {error && (
         <div className="error" role="alert">
@@ -890,14 +901,16 @@ function SeccionFotos({ lote, onChange, ask }: { lote: LoteDetalle; onChange: ()
               <a href={f.url} target="_blank" rel="noreferrer">
                 <img src={f.url} alt={`Foto del lote ${lote.loteNumero ?? ''}`} loading="lazy" />
               </a>
-              <button
-                type="button"
-                className="btn-icon photo-del"
-                onClick={() => onDelete(f)}
-                aria-label="Eliminar foto"
-              >
-                <X size={14} />
-              </button>
+              {!soloLectura && (
+                <button
+                  type="button"
+                  className="btn-icon photo-del"
+                  onClick={() => onDelete(f)}
+                  aria-label="Eliminar foto"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -910,6 +923,7 @@ function SeccionAnimales({
   lote, esDueno, onChange, ask,
 }: { lote: LoteDetalle; esDueno: boolean; onChange: () => void; ask: Asker }) {
   const [showForm, setShowForm] = useState(false);
+  const soloLectura = useSoloLectura();
   const { enFinca } = resumenVentas(lote, lote.ventas, lote.gastos);
   return (
     <section className="card" style={{ marginBottom: 'var(--space-4)' }}>
@@ -919,9 +933,11 @@ function SeccionAnimales({
           Animales individuales
           <span className="muted tabnum">({lote.animales.length})</span>
         </h2>
-        <button className={showForm ? 'btn-secondary' : ''} onClick={() => setShowForm((s) => !s)}>
-          {showForm ? <><X size={16} aria-hidden="true" />Cancelar</> : <><Plus size={16} aria-hidden="true" />Agregar animal</>}
-        </button>
+        {!soloLectura && (
+          <button className={showForm ? 'btn-secondary' : ''} onClick={() => setShowForm((s) => !s)}>
+            {showForm ? <><X size={16} aria-hidden="true" />Cancelar</> : <><Plus size={16} aria-hidden="true" />Agregar animal</>}
+          </button>
+        )}
       </div>
       {showForm && (
         <AnimalForm
@@ -1079,6 +1095,7 @@ function AnimalRow({
   const [uploading, setUploading] = useState(false);
   const [vendiendo, setVendiendo] = useState(false);
   const [separando, setSeparando] = useState(false);
+  const soloLectura = useSoloLectura();
   const anotaciones = animal.anotaciones ?? [];
 
   async function onDelete() {
@@ -1164,7 +1181,7 @@ function AnimalRow({
             {(animal.fotos ?? []).slice(0, 3).map((f) => (
               <img key={f.id} className="thumb" src={f.url} alt="" />
             ))}
-            <label className="btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
+            {!soloLectura && <label className="btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
               {uploading ? '…' : <><Plus size={12} /> foto</>}
               <input
                 type="file"
@@ -1173,20 +1190,22 @@ function AnimalRow({
                 disabled={uploading}
                 onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
               />
-            </label>
+            </label>}
           </div>
         </td>
         <td>{animal.notas ?? <span className="muted">—</span>}</td>
         <td>
           <div className="row" style={{ gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              className="btn-danger btn-icon btn-sm"
-              onClick={onDelete}
-              aria-label="Eliminar animal"
-            >
-              <Trash2 size={14} />
-            </button>
+            {!soloLectura && (
+              <button
+                type="button"
+                className="btn-danger btn-icon btn-sm"
+                onClick={onDelete}
+                aria-label="Eliminar animal"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         </td>
       </tr>
@@ -1223,7 +1242,7 @@ function AnimalRow({
                 {vendiendo ? <><X size={12} aria-hidden="true" />Cancelar</> : <><Banknote size={12} aria-hidden="true" />Vender</>}
               </button>
             )}
-            {animal.sexo === 'VP' && !venta && (
+            {animal.sexo === 'VP' && !venta && !soloLectura && (
               <button
                 type="button"
                 className={separando ? 'btn-ghost btn-sm' : 'btn-secondary btn-sm'}
@@ -1354,6 +1373,7 @@ function SeccionGastos({
   const [monto, setMonto] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const soloLectura = useSoloLectura();
 
   const total = lote.gastos.reduce((s, g) => s + Number(g.monto), 0);
   const porPagar = lote.gastos.filter((g) => !g.pagado).reduce((s, g) => s + Number(g.monto), 0);
@@ -1409,7 +1429,7 @@ function SeccionGastos({
           </span>
         </span>
       </div>
-      <form onSubmit={onSubmit}>
+      {!soloLectura && <form onSubmit={onSubmit}>
         <div className="grid-3">
           <div className="field">
             <label htmlFor="gasto-tipo">Tipo</label>
@@ -1441,7 +1461,7 @@ function SeccionGastos({
             {loading ? 'Guardando…' : 'Agregar gasto'}
           </button>
         </div>
-      </form>
+      </form>}
       {lote.gastos.length > 0 && (
         <div style={{ overflowX: 'auto', marginTop: 'var(--space-3)' }}>
           <table className="table">
@@ -1475,6 +1495,7 @@ function GastoRow({
   const label = TIPO_GASTO_LABELS[gasto.tipo];
   // El transporte del bulk guarda "Transporte" como detalle: no lo repitas.
   const detalle = gasto.descripcion && gasto.descripcion !== label ? gasto.descripcion : null;
+  const soloLectura = useSoloLectura();
 
   async function marcarPagado() {
     await api(`/api/gastos/${gasto.id}`, { method: 'PATCH', body: { pagado: true } });
@@ -1500,14 +1521,16 @@ function GastoRow({
               Marcar pagado
             </button>
           )}
-          <button
-            type="button"
-            className="btn-danger btn-icon btn-sm"
-            onClick={onDelete}
-            aria-label="Eliminar gasto"
-          >
-            <X size={14} />
-          </button>
+          {!soloLectura && (
+            <button
+              type="button"
+              className="btn-danger btn-icon btn-sm"
+              onClick={onDelete}
+              aria-label="Eliminar gasto"
+            >
+              <X size={14} />
+            </button>
+          )}
         </td>
       </tr>
       <tr>

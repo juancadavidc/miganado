@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
-import { esDueno, lotesVisiblesWhere, puedeOperar, rolesEnFincaDeLote } from '../lib/fincaAccess.js';
+import { esDueno, lotesVisiblesWhere, lotesLegiblesWhere, puedeOperar, rolesEnFincaDeLote } from '../lib/fincaAccess.js';
 
 // Crías al pie de las vacas paridas. Una cría no es una cabeza comprada: vive en el
 // lote (pegada a su madre si está registrada) y su venta suma plata al lote sin
@@ -65,7 +65,7 @@ router.get('/', async (req, res) => {
     where: {
       esCria: true,
       ...(loteId && { loteId }),
-      lote: { ...lotesVisiblesWhere(req.user!.userId), ...(fincaId && { fincaId }) },
+      lote: { ...lotesLegiblesWhere(req.user!.userId), ...(fincaId && { fincaId }) },
     },
     orderBy: { createdAt: 'asc' },
     include: {

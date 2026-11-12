@@ -151,7 +151,12 @@ va después del núcleo del ciclo. Empezar simple, sin detalle por animal.
 ### 6. Reportes de rentabilidad por finca y periodo — *chica*
 Sobre datos ya capturados: lotes cerrados en un rango de fechas, cabezas,
 ingresos, gastos, utilidad neta. Exportable como **PDF o imagen para compartir
-por WhatsApp/Telegram** con el contador o el socio.
+por WhatsApp/Telegram** con el contador o el socio. (Mientras tanto, el dueño ya
+puede **compartirle la finca en solo lectura** al socio o al contador.)
+
+**Compartir en solo lectura — siguientes pasos:** que el bot de Telegram del lector
+responda consultas sobre las fincas compartidas, y un filtro por finca en el
+dashboard para no mezclar lo propio con lo compartido.
 
 ## Notificaciones (enfoque definido)
 

@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client';
 import type { Anotacion } from '../types';
 import { fmtDate } from '../lib/format';
 import { useConfirm } from './ConfirmDialog';
+import { useSoloLectura } from '../lib/soloLectura';
 
 type Target =
   | { loteId: string }
@@ -24,6 +25,7 @@ export function Anotaciones({ target, anotaciones, onChange, compact = false }: 
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(!compact);
   const { ask, dialog } = useConfirm();
+  const soloLectura = useSoloLectura();
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -60,6 +62,9 @@ export function Anotaciones({ target, anotaciones, onChange, compact = false }: 
 
   const count = anotaciones.length;
 
+  // El lector ve las anotaciones que hay, pero no escribe ni edita.
+  if (soloLectura && count === 0) return null;
+
   if (compact && !open) {
     return (
       <button
@@ -86,7 +91,7 @@ export function Anotaciones({ target, anotaciones, onChange, compact = false }: 
         </div>
       )}
 
-      <form onSubmit={onSubmit} className="anotacion-form">
+      {!soloLectura && <form onSubmit={onSubmit} className="anotacion-form">
         <input
           type="text"
           value={texto}
@@ -97,7 +102,7 @@ export function Anotaciones({ target, anotaciones, onChange, compact = false }: 
         <button type="submit" disabled={adding || !texto.trim()} className="btn-sm">
           {adding ? '…' : <><MessageSquarePlus size={14} aria-hidden="true" />Agregar</>}
         </button>
-      </form>
+      </form>}
 
       {error && (
         <div className="error" role="alert" style={{ marginTop: 'var(--space-2)' }}>
@@ -127,6 +132,7 @@ function AnotacionItem({
   onChange: () => void;
   onDelete: () => void;
 }) {
+  const soloLectura = useSoloLectura();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(anotacion.texto);
   const [saving, setSaving] = useState(false);
@@ -184,7 +190,7 @@ function AnotacionItem({
       ) : (
         <>
           <p className="anotacion-texto">{anotacion.texto}</p>
-          <div className="anotacion-actions">
+          {!soloLectura && <div className="anotacion-actions">
             <button
               type="button"
               className="btn-ghost btn-icon btn-sm"
@@ -201,7 +207,7 @@ function AnotacionItem({
             >
               <Trash2 size={12} />
             </button>
-          </div>
+          </div>}
         </>
       )}
     </li>
