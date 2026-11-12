@@ -99,13 +99,15 @@ Variables de entorno (ver `backend/.env.example`):
 | POST | `/api/auth/register` | registrar (documento, nombre, password) |
 | POST | `/api/auth/login`    | login con documento |
 | GET  | `/api/auth/me`       | usuario actual |
-| GET  | `/api/fincas`        | listar fincas (propias y que cuido) |
-| GET  | `/api/fincas/:id`    | detalle de finca + traslados pendientes |
+| GET  | `/api/fincas`        | listar fincas (propias, que cuido y compartidas conmigo), cada una con `miRol` (`DUENO`/`CUIDADOR`/`LECTOR`) |
+| GET  | `/api/fincas/:id`    | detalle de finca + `miRol`, lectores y traslados pendientes (estos dos vacíos para un lector) |
 | POST | `/api/fincas`        | crear finca |
 | PUT  | `/api/fincas/:id`    | editar nombre/propiedades |
 | DELETE | `/api/fincas/:id`  | eliminar finca (solo dueño) |
 | POST | `/api/fincas/:id/cuidador` | asignar/cambiar cuidador |
 | DELETE | `/api/fincas/:id/cuidador` | quitar cuidador |
+| POST | `/api/fincas/:id/lectores` | compartir la finca en solo lectura con un usuario registrado (`documento`); acceso inmediato — solo dueño |
+| DELETE | `/api/fincas/:id/lectores/:userId` | dejar de compartir: lo hace el dueño, o el mismo lector para salirse |
 | POST | `/api/fincas/:id/dueno` | transferir propiedad (requiere aceptación) |
 | GET  | `/api/potreros?fincaId=` | listar potreros de una finca |
 | POST | `/api/potreros`      | crear potrero |
@@ -195,6 +197,8 @@ cd backend && npm run build    # dist/
   **cuidador**. Capacidad fija (ancho del mapa: 16/32/64 columnas) y
   `propiedades` libres (clave-valor: ubicación, municipio, vereda, etc.). Todo lo
   que vive en la finca (potreros y lotes) hereda quién la posee y la cuida.
+- **FincaLector** — usuario con quien el dueño comparte una finca en **solo
+  lectura** (socio, contador). Clave `(fincaId, userId)`.
 - **Potrero** — zona de pastoreo dentro de una finca. Estado *Ocupado* / *En
   descanso* (manual, o automático al mover un lote) con fecha, `metadatos` libres (área, tipo de pasto, aforo,
   agua…) y posición/tamaño en el mapa visual (`gridX/Y/W/H`).
@@ -279,6 +283,14 @@ cd backend && npm run build    # dist/
 - **Cuidador:** hace el trabajo del día — potreros, animales, gastos, fotos,
   anotaciones — y edita los **datos operativos** del lote (fecha, sexo, cantidad,
   peso, notas, crías). Ve las ventas, pero no las registra.
+- **Lector (solo lectura):** el dueño le comparte la finca por documento desde
+  el detalle de la finca. Ve todo lo de la finca, también la plata (compra,
+  gastos, ventas, utilidad), en la lista de fincas, el dashboard, el mapa y el
+  detalle de cada lote, pero no puede registrar ni editar nada: la UI esconde los
+  controles y el backend responde 404 a cualquier escritura. Las rutas GET usan
+  `fincasLegiblesWhere` y las que escriben siguen usando `fincasVisiblesWhere`
+  (solo dueño/cuidador). Su bot de Telegram no ve las fincas compartidas. Se
+  puede salir cuando quiera.
 
 ### Catálogo de tipos de gasto
 

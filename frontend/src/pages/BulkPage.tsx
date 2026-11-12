@@ -61,7 +61,7 @@ function GastoTransporteModal({ onClose, onDone }: { onClose: () => void; onDone
 
   useEffect(() => {
     api<{ lotes: Lote[] }>('/api/lotes')
-      .then((d) => setLotes(d.lotes))
+      .then((d) => setLotes(d.lotes.filter((l) => l.finca?.miRol !== 'LECTOR')))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Error al cargar los lotes'))
       .finally(() => setCargando(false));
   }, []);

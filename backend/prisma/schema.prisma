@@ -78,6 +78,7 @@ model User {
   fincasCuidadas     Finca[]    @relation("FincaCuidador")
   trasladosRecibidos Traslado[] @relation("TrasladoPara")
   trasladosCreados   Traslado[] @relation("TrasladoCreadoPor")
+  fincasCompartidas  FincaLector[]
 }
 
 // La finca es la unidad de propiedad: tiene un dueño y (opcional) un cuidador.
@@ -94,11 +95,26 @@ model Finca {
   potreros    Potrero[]
   lotes       Lote[]
   traslados   Traslado[]
+  lectores    FincaLector[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   @@index([duenoId])
   @@index([cuidadorId])
+}
+
+// Usuario con quien el dueño comparte la finca en solo lectura (socio, contador):
+// ve todo lo de la finca (incluida la plata) pero no puede registrar ni editar nada.
+// El acceso es inmediato al compartir; el dueño lo quita o el lector se sale.
+model FincaLector {
+  fincaId   String
+  finca     Finca    @relation(fields: [fincaId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([fincaId, userId])
+  @@index([userId])
 }
 
 model Potrero {

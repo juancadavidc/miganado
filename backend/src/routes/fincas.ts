@@ -3,7 +3,9 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
-import { fincasVisiblesWhere, usuarioPublicSelect, rolesEnFinca, esDueno } from '../lib/fincaAccess.js';
+import {
+  fincasVisiblesWhere, fincasLegiblesWhere, miRol, usuarioPublicSelect, rolesEnFinca, esDueno,
+} from '../lib/fincaAccess.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -53,19 +55,24 @@ const fincaInclude = {
 } as const;
 
 router.get('/', async (req, res) => {
+  const me = req.user!.userId;
   const fincas = await prisma.finca.findMany({
-    where: fincasVisiblesWhere(req.user!.userId),
+    where: fincasLegiblesWhere(me),
     orderBy: { createdAt: 'asc' },
     include: fincaInclude,
   });
-  res.json({ fincas });
+  res.json({ fincas: fincas.map((f) => ({ ...f, miRol: miRol(f, me) })) });
 });
 
 router.get('/:id', async (req, res) => {
   const finca = await prisma.finca.findFirst({
-    where: { id: req.params.id, ...fincasVisiblesWhere(req.user!.userId) },
+    where: { id: req.params.id, ...fincasLegiblesWhere(req.user!.userId) },
     include: {
       ...fincaInclude,
+      lectores: {
+        orderBy: { createdAt: 'asc' },
+        select: { createdAt: true, user: { select: usuarioPublicSelect } },
+      },
       traslados: {
         where: { estado: 'PENDIENTE' },
         orderBy: { createdAt: 'desc' },
@@ -77,7 +84,16 @@ router.get('/:id', async (req, res) => {
     },
   });
   if (!finca) return res.status(404).json({ error: 'Finca no encontrada' });
-  res.json({ finca });
+  const rol = miRol(finca, req.user!.userId);
+  // Un lector no necesita ver los traslados pendientes ni a los otros lectores.
+  res.json({
+    finca: {
+      ...finca,
+      miRol: rol,
+      lectores: rol === 'LECTOR' ? [] : finca.lectores.map((l) => ({ ...l.user, desde: l.createdAt })),
+      traslados: rol === 'LECTOR' ? [] : finca.traslados,
+    },
+  });
 });
 
 router.post('/', async (req, res) => {
@@ -259,6 +275,55 @@ router.post('/:id/dueno', async (req, res) => {
     });
   });
   res.status(201).json({ traslado });
+});
+
+// --- Compartir en solo lectura (socio, contador) ---
+
+const lectorSchema = z.object({
+  documento: z.string().min(1, 'Indicá el documento del usuario'),
+});
+
+// El dueño comparte la finca con otro usuario ya registrado. El acceso es inmediato.
+router.post('/:id/lectores', async (req, res) => {
+  const parsed = lectorSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const finca = await fincaDelDueno(req.params.id, req.user!.userId);
+  if (!finca) return res.status(404).json({ error: 'Finca no encontrada' });
+
+  const destino = await prisma.user.findUnique({
+    where: { documento: parsed.data.documento.trim() },
+    select: usuarioPublicSelect,
+  });
+  if (!destino) {
+    return res.status(404).json({ error: 'No existe un usuario registrado con ese documento' });
+  }
+  if (destino.id === finca.duenoId || destino.id === finca.cuidadorId) {
+    return res.status(400).json({ error: 'Ese usuario ya maneja la finca (dueño o cuidador)' });
+  }
+
+  await prisma.fincaLector.upsert({
+    where: { fincaId_userId: { fincaId: finca.id, userId: destino.id } },
+    create: { fincaId: finca.id, userId: destino.id },
+    update: {},
+  });
+  res.status(201).json({ lector: destino });
+});
+
+// Quita el acceso de solo lectura: lo hace el dueño, o el mismo lector para salirse.
+router.delete('/:id/lectores/:userId', async (req, res) => {
+  const me = req.user!.userId;
+  const finca = await prisma.finca.findUnique({
+    where: { id: req.params.id },
+    select: { duenoId: true },
+  });
+  if (!finca || (finca.duenoId !== me && req.params.userId !== me)) {
+    return res.status(404).json({ error: 'Finca no encontrada' });
+  }
+  await prisma.fincaLector.deleteMany({
+    where: { fincaId: req.params.id, userId: req.params.userId },
+  });
+  res.status(204).end();
 });
 
 export default router;

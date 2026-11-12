@@ -82,12 +82,16 @@ export type Traslado = {
   finca?: TrasladoFincaResumen;
 };
 
+// Rol del usuario actual en una finca. LECTOR = se la compartieron en solo lectura.
+export type MiRol = 'DUENO' | 'CUIDADOR' | 'LECTOR';
+
 // Resumen de la finca que viene embebido en cada lote (de dónde hereda dueño/cuidador).
 export type LoteFincaResumen = {
   id: string;
   nombre: string;
   dueno?: UsuarioMini;
   cuidador?: UsuarioMini | null;
+  miRol?: MiRol;
 };
 
 export type Finca = {
@@ -97,6 +101,8 @@ export type Finca = {
   propiedades: Record<string, string> | null;
   dueno?: UsuarioMini;
   cuidador?: UsuarioMini | null;
+  miRol?: MiRol;
+  lectores?: (UsuarioMini & { desde: string })[];
   traslados?: Traslado[];
   createdAt: string;
   updatedAt: string;

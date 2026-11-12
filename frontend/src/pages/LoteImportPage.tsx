@@ -83,8 +83,9 @@ export function LoteImportPage() {
   useEffect(() => {
     api<{ fincas: Finca[] }>('/api/fincas')
       .then((d) => {
-        setFincas(d.fincas);
-        if (d.fincas[0]) setFincaId((cur) => cur || d.fincas[0].id);
+        const operables = d.fincas.filter((f) => f.miRol !== 'LECTOR');
+        setFincas(operables);
+        if (operables[0]) setFincaId((cur) => cur || operables[0].id);
       })
       .catch(() => { /* el aviso de crear finca aparece en el selector */ });
   }, []);

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
-import { fincasVisiblesWhere } from '../lib/fincaAccess.js';
+import { fincasLegiblesWhere, miRol } from '../lib/fincaAccess.js';
 
 // Vista "viva" de una finca: sus potreros y el ganado que hay hoy en cada uno.
 // Solo cuenta lo que sigue en finca (compradas − vendidas) y, por lote, trae lo
@@ -15,8 +15,8 @@ router.get('/', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const finca = await prisma.finca.findFirst({
-    where: { id: parsed.data.fincaId, ...fincasVisiblesWhere(req.user!.userId) },
-    select: { id: true, nombre: true, capacidad: true },
+    where: { id: parsed.data.fincaId, ...fincasLegiblesWhere(req.user!.userId) },
+    select: { id: true, nombre: true, capacidad: true, duenoId: true, cuidadorId: true },
   });
   if (!finca) return res.status(404).json({ error: 'Finca no encontrada' });
 
@@ -68,7 +68,12 @@ router.get('/', async (req, res) => {
     })
     .filter((l) => l.cabezas > 0 || l.animales.length > 0);
 
-  res.json({ finca, potreros, lotes: enFinca });
+  const { duenoId, cuidadorId, ...datosFinca } = finca;
+  res.json({
+    finca: { ...datosFinca, miRol: miRol({ duenoId, cuidadorId }, req.user!.userId) },
+    potreros,
+    lotes: enFinca,
+  });
 });
 
 export default router;

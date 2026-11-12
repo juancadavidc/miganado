@@ -24,9 +24,30 @@ export function fincasVisiblesWhere(userId: string) {
   return { OR: [{ duenoId: userId }, { cuidadorId: userId }] };
 }
 
-// Filtro Prisma: lotes cuya finca el usuario puede ver.
+// Filtro Prisma: lotes cuya finca el usuario puede operar.
 export function lotesVisiblesWhere(userId: string) {
   return { finca: fincasVisiblesWhere(userId) };
+}
+
+// Filtro Prisma: fincas que el usuario puede LEER: las que opera más las que le
+// compartieron en solo lectura. Úsalo solo en rutas GET.
+export function fincasLegiblesWhere(userId: string) {
+  return { OR: [{ duenoId: userId }, { cuidadorId: userId }, { lectores: { some: { userId } } }] };
+}
+
+// Filtro Prisma: lotes cuya finca el usuario puede leer. Solo para rutas GET.
+export function lotesLegiblesWhere(userId: string) {
+  return { finca: fincasLegiblesWhere(userId) };
+}
+
+export type MiRol = 'DUENO' | 'CUIDADOR' | 'LECTOR';
+
+// Rol del usuario en una finca que ya sabemos legible. El frontend lo usa para
+// esconder los controles de edición cuando es LECTOR.
+export function miRol(finca: FincaRoles, userId: string): MiRol {
+  if (esDueno(finca, userId)) return 'DUENO';
+  if (esCuidador(finca, userId)) return 'CUIDADOR';
+  return 'LECTOR';
 }
 
 // Roles del usuario en una finca, o null si no tiene acceso.

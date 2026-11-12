@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { withUrl } from '../lib/foto.js';
 import {
-  lotesVisiblesWhere, usuarioPublicSelect, rolesEnFinca, rolesEnFincaDeLote, esDueno,
+  lotesVisiblesWhere, lotesLegiblesWhere, miRol, usuarioPublicSelect, rolesEnFinca, rolesEnFincaDeLote, esDueno,
 } from '../lib/fincaAccess.js';
 
 const router = Router();
@@ -43,6 +43,8 @@ const fincaInclude = {
     select: {
       id: true,
       nombre: true,
+      duenoId: true,
+      cuidadorId: true,
       dueno: { select: usuarioPublicSelect },
       cuidador: { select: usuarioPublicSelect },
     },
@@ -51,7 +53,7 @@ const fincaInclude = {
 
 router.get('/', async (req, res) => {
   const lotes = await prisma.lote.findMany({
-    where: lotesVisiblesWhere(req.user!.userId),
+    where: lotesLegiblesWhere(req.user!.userId),
     orderBy: { fecha: 'desc' },
     include: {
       ...fincaInclude,
@@ -66,6 +68,7 @@ router.get('/', async (req, res) => {
   res.json({
     lotes: lotes.map(({ ventas, gastos, ...lote }) => ({
       ...lote,
+      finca: { ...lote.finca, miRol: miRol(lote.finca, req.user!.userId) },
       cantidadVendida: ventas.reduce((s, v) => s + v.cantidad, 0),
       ingresosVentas: ventas.reduce((s, v) => s + Number(v.valorRecibido), 0),
       gastosTotal: gastos.reduce((s, g) => s + Number(g.monto), 0),
@@ -81,7 +84,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   const lote = await prisma.lote.findFirst({
-    where: { id: req.params.id, ...lotesVisiblesWhere(req.user!.userId) },
+    where: { id: req.params.id, ...lotesLegiblesWhere(req.user!.userId) },
     include: {
       ...fincaInclude,
       animales: {
@@ -105,6 +108,7 @@ router.get('/:id', async (req, res) => {
   if (!lote) return res.status(404).json({ error: 'Lote no encontrado' });
   const loteConUrls = {
     ...lote,
+    finca: { ...lote.finca, miRol: miRol(lote.finca, req.user!.userId) },
     fotos: lote.fotos.map(withUrl),
     animales: lote.animales.map((a) => ({ ...a, fotos: a.fotos.map(withUrl) })),
   };

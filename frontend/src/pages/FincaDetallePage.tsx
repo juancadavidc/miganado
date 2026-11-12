@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Plus, Fence, Sprout, Beef, Clock, Pencil, Trash2, AlertCircle, X, Map, LayoutList, ArrowLeft,
-  Users, UserPlus, ArrowLeftRight,
+  Users, UserPlus, ArrowLeftRight, Eye,
 } from 'lucide-react';
 import { api, ApiError } from '../api/client';
 import type { Finca, Potrero, Traslado } from '../types';
@@ -146,6 +146,10 @@ export function FincaDetallePage() {
 
   const ocupados = potreros.filter((p) => p.ocupado).length;
   const libres = potreros.length - ocupados;
+  // Lector (finca compartida en solo lectura): ve la lista de potreros sin acciones;
+  // el mapa editable (arrastrar/redimensionar) queda solo para quien opera la finca.
+  const soloLectura = finca?.miRol === 'LECTOR';
+  const vista = soloLectura ? 'lista' : tab;
 
   return (
     <div className="container">
@@ -161,10 +165,12 @@ export function FincaDetallePage() {
             Tus zonas de pastoreo y su estado de ocupación
           </p>
         </div>
-        <button type="button" className="btn" onClick={() => setModal({ open: true, mode: 'crear' })}>
-          <Plus size={16} aria-hidden="true" />
-          Nuevo potrero
-        </button>
+        {!soloLectura && (
+          <button type="button" className="btn" onClick={() => setModal({ open: true, mode: 'crear' })}>
+            <Plus size={16} aria-hidden="true" />
+            Nuevo potrero
+          </button>
+        )}
       </header>
 
       {error && (
@@ -181,7 +187,11 @@ export function FincaDetallePage() {
       {loading || !finca ? (
         <LoadingState />
       ) : potreros.length === 0 ? (
-        <EmptyState onCrear={() => setModal({ open: true, mode: 'crear' })} />
+        soloLectura ? (
+          <div className="card empty-state"><p>Esta finca todavía no tiene potreros.</p></div>
+        ) : (
+          <EmptyState onCrear={() => setModal({ open: true, mode: 'crear' })} />
+        )
       ) : (
         <>
           <section className="grid-3" style={{ marginBottom: 'var(--space-4)' }}>
@@ -190,6 +200,7 @@ export function FincaDetallePage() {
             <KpiCard icon={<Sprout size={16} />} label="En descanso" value={String(libres)} />
           </section>
 
+          {!soloLectura && (
           <div className="tabs" role="tablist" aria-label="Vista de potreros">
             <button
               type="button"
@@ -212,8 +223,9 @@ export function FincaDetallePage() {
               Lista
             </button>
           </div>
+          )}
 
-          {tab === 'mapa' ? (
+          {vista === 'mapa' ? (
             <PotreroMapa
               potreros={potreros}
               cols={finca.capacidad}
@@ -266,6 +278,7 @@ export function FincaDetallePage() {
 
                   {p.notas && <p className="potrero-notas">{p.notas}</p>}
 
+                  {!soloLectura && (
                   <div className="potrero-actions">
                     <button
                       type="button"
@@ -295,6 +308,7 @@ export function FincaDetallePage() {
                       <Trash2 size={16} />
                     </button>
                   </div>
+                  )}
                 </article>
               );
             })}
@@ -529,13 +543,143 @@ function SeccionPropiedadFinca({ finca, meId, onChange, ask }: {
             </form>
           )}
         </>
+      ) : finca.miRol === 'LECTOR' ? (
+        <SalirDeFincaCompartida finca={finca} meId={meId} ask={ask} />
       ) : (
         <p className="muted" style={{ marginTop: 'var(--space-3)' }}>
           Cuidás esta finca. Podés registrar el día a día (potreros, lotes, pesos, gastos, anotaciones).
           Los valores comerciales y la asignación de roles los maneja el dueño.
         </p>
       )}
+
+      {esDueno && <SeccionLectores finca={finca} onChange={onChange} ask={ask} />}
     </section>
+  );
+}
+
+// El lector ve que la finca es compartida y puede salirse cuando quiera.
+function SalirDeFincaCompartida({ finca, meId, ask }: { finca: Finca; meId?: string; ask: Asker }) {
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
+
+  async function salir() {
+    const ok = await ask({
+      title: '¿Dejar de ver esta finca?',
+      description: 'Ya no vas a ver sus potreros ni sus lotes. El dueño te la puede volver a compartir.',
+      confirmLabel: 'Salirme',
+      variant: 'danger',
+    });
+    if (!ok || !meId) return;
+    try {
+      await api(`/api/fincas/${finca.id}/lectores/${meId}`, { method: 'DELETE' });
+      navigate('/fincas');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error');
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 'var(--space-3)' }}>
+      <p className="muted row" style={{ gap: 'var(--space-2)' }}>
+        <Eye size={14} aria-hidden="true" />
+        Te compartieron esta finca en solo lectura: ves todo, pero no podés registrar ni editar.
+      </p>
+      {error && <div className="error" role="alert">{error}</div>}
+      <button type="button" className="btn-secondary btn-sm" onClick={salir}>Salirme de esta finca</button>
+    </div>
+  );
+}
+
+// El dueño comparte la finca en solo lectura (socio, contador) por documento.
+function SeccionLectores({ finca, onChange, ask }: { finca: Finca; onChange: () => void; ask: Asker }) {
+  const [abierto, setAbierto] = useState(false);
+  const [documento, setDocumento] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const lectores = finca.lectores ?? [];
+
+  async function compartir(e: FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      await api(`/api/fincas/${finca.id}/lectores`, { method: 'POST', body: { documento: documento.trim() } });
+      setDocumento('');
+      setAbierto(false);
+      onChange();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function quitar(l: { id: string; nombre: string }) {
+    const ok = await ask({
+      title: `¿Dejar de compartir con ${l.nombre}?`,
+      description: 'Ya no va a poder ver esta finca ni sus lotes.',
+      confirmLabel: 'Quitar',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    setError(null);
+    try {
+      await api(`/api/fincas/${finca.id}/lectores/${l.id}`, { method: 'DELETE' });
+      onChange();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Error');
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 'var(--space-4)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-3)' }}>
+      <div className="row-between">
+        <div className="label-cap row" style={{ gap: 'var(--space-2)' }}>
+          <Eye size={14} aria-hidden="true" /> Compartida en solo lectura
+        </div>
+        <button type="button" className="btn-secondary btn-sm" onClick={() => { setAbierto((a) => !a); setError(null); }}>
+          <UserPlus size={14} aria-hidden="true" /> Compartir
+        </button>
+      </div>
+
+      {lectores.length === 0 ? (
+        <p className="muted" style={{ fontSize: '0.85rem' }}>
+          Nadie más la ve. Compartila con tu socio o el contador: ven todo, pero no pueden editar.
+        </p>
+      ) : (
+        <ul style={{ listStyle: 'none', padding: 0, margin: 'var(--space-2) 0 0' }}>
+          {lectores.map((l) => (
+            <li key={l.id} className="row-between" style={{ padding: 'var(--space-1) 0' }}>
+              <span>
+                <strong>{l.nombre}</strong>
+                <span className="muted" style={{ fontSize: '0.8rem' }}> · Doc. {l.documento}</span>
+              </span>
+              <button type="button" className="btn-ghost btn-sm" onClick={() => quitar(l)}>Quitar</button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {error && <div className="error" role="alert" style={{ marginTop: 'var(--space-2)' }}>{error}</div>}
+
+      {abierto && (
+        <form onSubmit={compartir} className="row" style={{ gap: 'var(--space-2)', marginTop: 'var(--space-2)', alignItems: 'flex-end' }}>
+          <div className="field" style={{ flex: 1, marginBottom: 0 }}>
+            <label htmlFor="finca-lector-doc">Documento de la persona</label>
+            <input
+              id="finca-lector-doc"
+              type="text"
+              inputMode="numeric"
+              value={documento}
+              onChange={(e) => setDocumento(e.target.value)}
+              required
+              placeholder="ej. 1234"
+            />
+          </div>
+          <button type="submit" disabled={loading}>{loading ? 'Compartiendo…' : 'Compartir'}</button>
+        </form>
+      )}
+    </div>
   );
 }
 

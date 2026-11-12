@@ -47,6 +47,13 @@ function RolTag({ lote, meId }: { lote: Lote; meId?: string }) {
   const finca = lote.finca;
   if (!meId || !finca?.dueno) return null;
   const soyDueno = finca.dueno.id === meId;
+  if (finca.miRol === 'LECTOR') {
+    return (
+      <span className="badge" style={{ marginLeft: 6 }} title={`Finca de ${finca.dueno.nombre}, compartida en solo lectura`}>
+        Solo lectura
+      </span>
+    );
+  }
   if (!soyDueno) {
     return (
       <span className="badge" style={{ marginLeft: 6, background: 'var(--color-accent-soft)', color: 'var(--color-accent)' }}>
