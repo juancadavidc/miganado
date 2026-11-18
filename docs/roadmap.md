@@ -175,8 +175,8 @@ las alertas (rotación de potrero, vencimiento de vacuna, sugerencia de venta):
 ## Agente por Telegram — siguientes pasos
 
 - Llave de Anthropic por cuenta (hoy todas las cuentas usan la misma y la paga el dueño de la app).
-- Fotos por el chat (planilla de feria → OCR que ya existe; fotos de animales).
-- Notas de voz (transcribir y registrar).
+- Fotos por el chat: ya las lee el agente. Falta mandar la planilla de feria al OCR
+  que ya existe y guardar fotos de animales en su ficha.
 - Guardar la conversación en base para que sobreviva reinicios del backend.
 - Usar el mismo bot para las alertas (rotación, vacunas) descritas arriba.
 

@@ -1,7 +1,7 @@
 import { env } from '../lib/env.js';
 import { prisma } from '../lib/prisma.js';
 import { descifrar } from '../lib/cifrado.js';
-import { reiniciarConversacion, responder } from './agent.js';
+import { reiniciarConversacion, responder, type Imagen } from './agent.js';
 
 // Cada cuenta trae su propio bot de Telegram. El backend escucha todos por long
 // polling (sin webhook): un bucle por bot, que se prende o apaga cuando la cuenta
@@ -24,8 +24,33 @@ async function enviar(token: string, chatId: string, texto: string) {
   }
 }
 
+// Baja un archivo que mandaron al chat (foto, nota de voz).
+async function descargar(token: string, fileId: string): Promise<Buffer> {
+  const f = await tg(token, 'getFile', { file_id: fileId });
+  if (!f.ok) throw new Error(f.description ?? 'getFile falló');
+  const res = await fetch(`https://api.telegram.org/file/bot${token}/${f.result.file_path}`);
+  if (!res.ok) throw new Error(`descarga de Telegram: ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
+// Claude no recibe audio: la nota de voz (.ogg) se transcribe con OpenAI.
+async function transcribir(audio: Buffer): Promise<string> {
+  const form = new FormData();
+  form.append('file', new Blob([audio], { type: 'audio/ogg' }), 'voz.ogg');
+  form.append('model', 'gpt-4o-mini-transcribe');
+  form.append('language', 'es');
+  form.append('prompt', 'Ganadería en Córdoba, Colombia: lotes, potreros, pesajes, kilos, fletes, "palos", "mil", vacunas.');
+  const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+    body: form,
+  });
+  if (!res.ok) throw new Error(`transcripción: ${res.status} ${await res.text()}`);
+  return ((await res.json()) as { text: string }).text.trim();
+}
+
 const AYUDA = `Hola, soy el asistente de miganado 🐂
-Cuéntame lo que pasa en la finca y yo lo registro. Por ejemplo:
+Cuéntame lo que pasa en la finca (texto, nota de voz o foto) y yo lo registro. Por ejemplo:
 • "Pesé el lote 12: 20 animales, 7.800 kilos"
 • "Flete de 1.200.000 para los lotes 12 y 15"
 • "Pasé el lote 12 al potrero La Ceiba"
@@ -38,7 +63,7 @@ const PRIVADO = 'Este bot es privado. Si es tuyo, vincúlalo desde la app: menú
 async function manejar(userId: string, token: string, msg: any) {
   if (msg.chat.type !== 'private') return; // solo chats directos: el bot maneja plata
   const chatId = String(msg.chat.id);
-  const texto: string = (msg.text ?? '').trim();
+  const texto: string = (msg.text ?? msg.caption ?? '').trim();
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return;
 
@@ -69,12 +94,37 @@ async function manejar(userId: string, token: string, msg: any) {
     reiniciarConversacion(clave);
     return enviar(token, chatId, 'Listo, empecemos de cero.');
   }
-  if (!texto) return enviar(token, chatId, 'Por ahora solo entiendo texto. Escríbeme lo que pasó.');
+  if (msg.voice && !env.OPENAI_API_KEY) return enviar(token, chatId, 'Todavía no entiendo notas de voz. Escríbeme lo que pasó.');
+  if (!texto && !msg.voice && !msg.photo) return enviar(token, chatId, 'Solo entiendo texto, notas de voz y fotos.');
 
   await tg(token, 'sendChatAction', { chat_id: chatId, action: 'typing' });
   const typing = setInterval(() => tg(token, 'sendChatAction', { chat_id: chatId, action: 'typing' }), 4500);
   try {
-    const respuesta = await responder(clave, { userId: user.id, documento: user.documento, nombre: user.nombre }, texto);
+    let entrada = texto;
+    let imagen: Imagen | undefined;
+    if (msg.voice) {
+      let transcrito: string;
+      try {
+        transcrito = await transcribir(await descargar(token, msg.voice.file_id));
+      } catch (e) {
+        console.error('[telegram] voz', (e as Error).message);
+        return enviar(token, chatId, 'No pude oír la nota de voz. Mándala otra vez o escríbeme.');
+      }
+      if (!transcrito) return enviar(token, chatId, 'No se oyó nada en la nota de voz.');
+      entrada = `[nota de voz] ${transcrito}`;
+    }
+    if (msg.photo) {
+      // Telegram manda varios tamaños; el último es el más grande (y siempre JPEG).
+      const foto = msg.photo[msg.photo.length - 1];
+      imagen = { media_type: 'image/jpeg', data: (await descargar(token, foto.file_id)).toString('base64') };
+      entrada = texto ? `[foto] ${texto}` : '[foto sin texto]';
+    }
+    const respuesta = await responder(
+      clave,
+      { userId: user.id, documento: user.documento, nombre: user.nombre },
+      entrada,
+      imagen,
+    );
     await enviar(token, chatId, respuesta);
   } finally {
     clearInterval(typing);
