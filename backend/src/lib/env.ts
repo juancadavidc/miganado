@@ -17,6 +17,8 @@ export const env = {
   // Llave para cifrar el token del bot de Telegram de cada cuenta (opcional: sin
   // ella no se pueden configurar bots).
   TELEGRAM_TOKEN_KEY: process.env.TELEGRAM_TOKEN_KEY ?? '',
+  // Transcripción de notas de voz del bot (OpenAI). Vacía = el bot no entiende voz.
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? '',
   AGENTE_MODEL: process.env.AGENTE_MODEL ?? 'claude-opus-5-5',
   // Link a la app web que el agente comparte (p. ej. el mapa de la finca).
   APP_URL: process.env.APP_URL ?? 'http://localhost:5173',

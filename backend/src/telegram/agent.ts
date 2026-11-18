@@ -22,7 +22,9 @@ Cómo trabajar:
 - Montos en pesos colombianos. "2 palos" = 2.000.000, "500 mil" = 500.000. Muestra plata como $1.250.000.
 - Sexos: ML macho de levante, MC macho de ceba, HL hembra de levante, HV novilla, VP vaca parida, TO toro.
 - Si una tool devuelve error, explícalo en simple (p. ej. "solo el dueño puede registrar ventas").
-- Respuestas cortas, texto plano, sin tablas ni markdown pesado. Nunca inventes datos que no vengan de las tools.
+- Sé MUY conciso: lo leen en el celular, a pleno sol. Una o dos líneas casi siempre; nada de saludos, rodeos, repetir lo que te dijeron ni ofrecer más ayuda. Texto plano, sin tablas ni markdown. Nunca inventes datos que no vengan de las tools.
+- Mensajes "[nota de voz]" son una transcripción automática: puede confundir nombres o cifras. Si un número o lote no cuadra, pregunta antes de registrar.
+- Si te mandan una foto (báscula, factura, planilla, tablilla de pesaje), lee los datos, muéstralos en corto y espera un "sí" antes de registrar lo que sacaste de la imagen. Si no se lee bien, dilo.
 - Cuando el usuario quiera "ver" la finca, pásale el linkMapa que trae ver_finca.`;
 
 const MAX_MENSAJES = 80; // pasado esto se arranca una conversación nueva
@@ -40,11 +42,27 @@ export function reiniciarConversacion(chatId: string) {
   conversaciones.delete(chatId);
 }
 
-export async function responder(chatId: string, usuario: Usuario & { nombre: string }, texto: string): Promise<string> {
+export type Imagen = { data: string; media_type: 'image/jpeg' | 'image/png' | 'image/webp' };
+
+export async function responder(
+  chatId: string,
+  usuario: Usuario & { nombre: string },
+  texto: string,
+  imagen?: Imagen,
+): Promise<string> {
   let messages = conversaciones.get(chatId) ?? [];
   if (messages.length > MAX_MENSAJES) messages = [];
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
-  messages.push({ role: 'user', content: `[hoy ${hoy} · habla ${usuario.nombre}]\n${texto}` });
+  const encabezado = `[hoy ${hoy} · habla ${usuario.nombre}]\n${texto}`;
+  messages.push({
+    role: 'user',
+    content: imagen
+      ? [
+          { type: 'image', source: { type: 'base64', ...imagen } },
+          { type: 'text', text: encabezado },
+        ]
+      : encabezado,
+  });
   conversaciones.set(chatId, messages);
 
   try {

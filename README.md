@@ -84,6 +84,7 @@ Variables de entorno (ver `backend/.env.example`):
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | OCR de planillas con Claude Vision |
 | `TELEGRAM_TOKEN_KEY` | llave para cifrar el token del bot de Telegram de cada cuenta; vacía = Telegram deshabilitado |
 | `AGENTE_MODEL` | modelo del agente del chat (default `claude-opus-5-5`; usa `ANTHROPIC_API_KEY`) |
+| `OPENAI_API_KEY` | transcripción de las notas de voz del bot (`gpt-4o-mini-transcribe`); vacía = el bot no entiende voz |
 | `APP_URL` | URL pública de la app web, para los links al mapa que comparte el agente |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL` | almacenamiento de fotos en Cloudflare R2 |
 
@@ -332,6 +333,13 @@ quitar el token, sin redeploy. La llave de Anthropic es una sola para todas las
 cuentas.
 
 En el chat: `/nuevo` olvida la conversación y `/desvincular` suelta el chat.
+
+El bot entiende **texto, notas de voz y fotos**. Las notas de voz se transcriben
+con OpenAI (`OPENAI_API_KEY`) porque Claude no recibe audio, y el agente recibe el
+texto marcado como `[nota de voz]` para que pregunte si una cifra no cuadra. Las
+fotos (báscula, factura, tablilla de pesaje), con su texto si lo traen, van
+directo a Claude; el agente muestra lo que leyó y espera un "sí" antes de
+registrarlo.
 
 Las tools del agente (`backend/src/telegram/tools.ts`) **no tocan la base**: llaman
 a la misma API REST firmando un token del usuario vinculado, así heredan
